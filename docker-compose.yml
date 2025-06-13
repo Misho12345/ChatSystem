@@ -1,0 +1,96 @@
+services:
+  user_account_service:
+    image: ${DOCKER_REGISTRY-}user-account-service
+    build:
+      context: .
+      dockerfile: UserAccountService/Dockerfile
+    ports:
+      - "8001:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_HTTP_PORTS=8080
+      - ConnectionStrings__PostgresConnection=Host=postgres_db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD};
+      - JwtSettings__Secret=${JWT_SECRET}
+      - JwtSettings__Issuer=https://localhost:8001
+      - JwtSettings__Audience=https://localhost:8001
+      - JwtSettings__ExpiryMinutes=15
+      - JwtSettings__RefreshTokenExpiryDays=7
+    depends_on:
+      - postgres_db
+    networks:
+      - app-network
+  
+  chat_service:
+    build:
+      context: .
+      dockerfile: ChatService/Dockerfile
+    ports:
+      - "8002:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_HTTP_PORTS=8080
+      - ConnectionStrings__MongoConnection=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongo_db:27017/
+      - ConnectionStrings__MongoDatabaseName=${MONGO_DB}
+      - JwtSettings__Secret=${JWT_SECRET}
+      - JwtSettings__Issuer=https://localhost:8001
+      - JwtSettings__Audience=https://localhost:8002
+    depends_on:
+      - mongo_db
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Frontend/Dockerfile
+    image: ${DOCKER_REGISTRY-}frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - user_account_service
+      - chat_service
+    networks:
+      - app-network
+
+  postgres_db:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d user_data_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mongo_db:
+    image: mongo:latest
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - "27017:27017"
+    networks:
+      - app-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  mongo_data:
