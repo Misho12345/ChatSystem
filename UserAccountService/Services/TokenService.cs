@@ -45,7 +45,7 @@ public class TokenService(UserAccountDbContext context, IOptions<JwtSettings> jw
             JwtId = accessTokenSecurityToken.Id,
             UserId = user.Id,
             CreatedAt = DateTime.UtcNow,
-            ExpiryDate = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiryDays),
+            ExpiryDate = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiryDays)
         };
 
         context.RefreshTokens.Add(newRefreshToken);
@@ -92,7 +92,7 @@ public class TokenService(UserAccountDbContext context, IOptions<JwtSettings> jw
         storedToken.Used = true;
         context.RefreshTokens.Update(storedToken);
 
-        var (newAccessToken, newGeneratedRefreshToken) = GenerateTokens(storedToken.User);
+        var (newAccessToken, newGeneratedRefreshToken) = GenerateTokens(storedToken.User!);
 
         logger.LogInformation(
             "Successfully refreshed tokens for User ID: {UserId} using old refresh token: {OldRefreshToken}",

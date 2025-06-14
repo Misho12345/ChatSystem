@@ -2,9 +2,9 @@
 
 on:
   push:
-    branches: [ master ]
+    branches: [master]
   pull_request:
-    branches: [ master ]
+    branches: [master]
   workflow_dispatch:
 
 jobs:
@@ -60,9 +60,6 @@ jobs:
           docker compose build
           docker compose up -d
 
-      - name: Wait for services to be healthy
-        run: sleep 20
-
       - name: Check running containers
         run: docker compose ps
 
@@ -76,6 +73,20 @@ jobs:
 
       - name: Build solution
         run: dotnet build ./ChatSystem.sln --no-restore --configuration Release
+
+      - name: Wait for databases to be healthy
+        run: |
+          echo "Waiting for postgres_db to become healthy..."
+          until [ "$(docker inspect -f '{{.State.Health.Status}}' postgres_db 2>/dev/null)" == "healthy" ]; do
+              sleep 2
+          done
+          echo "postgres_db is healthy!"
+
+          echo "Waiting for mongo_db to become healthy..."
+          until [ "$(docker inspect -f '{{.State.Health.Status}}' mongo_db 2>/dev/null)" == "healthy" ]; do
+              sleep 2
+          done
+          echo "mongo_db is healthy!"
 
       - name: Run unit tests
         run: dotnet test ./ChatSystem.sln --no-build --configuration Release --collect:"XPlat Code Coverage" --logger "trx;LogFileName=test-results.trx"

@@ -1,28 +1,19 @@
 ﻿namespace ChatService.Models.DTOs;
 
-public class MessageDto
+public class MessageDto(
+    string id,
+    string conversationId,
+    Guid senderId,
+    string senderTag,
+    string text,
+    DateTime timestamp,
+    string messageType)
 {
-    public string Id { get; set; }
-    public string ConversationId { get; set; }
-    public Guid SenderId { get; set; }
-    public string SenderTag { get; set; }
-    public string Text { get; set; }
-    public DateTime Timestamp { get; set; }
-    public string MessageType { get; set; }
-
-    public MessageDto(string id, string conversationId, Guid senderId, string senderTag, string text,
-        DateTime timestamp, string messageType)
-    {
-        Id = id;
-        ConversationId = conversationId;
-        SenderId = senderId;
-        SenderTag = senderTag;
-        Text = text;
-        Timestamp = timestamp;
-        MessageType = messageType ?? "text";
-    }
-
-    public MessageDto()
-    {
-    }
+    public string Id { get; set; } = id;
+    public string ConversationId { get; set; } = conversationId;
+    public Guid SenderId { get; set; } = senderId;
+    public string SenderTag { get; set; } = senderTag;
+    public string Text { get; set; } = text;
+    public DateTime Timestamp { get; set; } = timestamp;
+    public string MessageType { get; set; } = messageType ?? "text";
 }

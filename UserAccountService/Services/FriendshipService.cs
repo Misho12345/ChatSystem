@@ -204,9 +204,9 @@ public class FriendshipService(UserAccountDbContext context, ILogger<FriendshipS
             .Where(f => f.Status == FriendshipStatus.Accepted && (f.RequesterId == userId || f.AddresseeId == userId))
             .Select(f => new FriendDto
             {
-                Id = f.RequesterId == userId ? f.Addressee.Id : f.Requester.Id,
-                Name = f.RequesterId == userId ? f.Addressee.Name : f.Requester.Name,
-                Tag = f.RequesterId == userId ? f.Addressee.Tag : f.Requester.Tag,
+                Id = f.RequesterId == userId ? f.Addressee!.Id : f.Requester!.Id,
+                Name = f.RequesterId == userId ? f.Addressee!.Name : f.Requester!.Name,
+                Tag = f.RequesterId == userId ? f.Addressee!.Tag : f.Requester!.Tag,
                 FriendshipId = f.Id,
                 BecameFriendsAt = f.RespondedAt ?? f.RequestedAt
             })
@@ -222,7 +222,7 @@ public class FriendshipService(UserAccountDbContext context, ILogger<FriendshipS
             .Select(f => new FriendRequestDto
             {
                 Id = f.Id,
-                RequesterId = f.Requester.Id,
+                RequesterId = f.Requester!.Id,
                 RequesterName = f.Requester.Name,
                 RequesterTag = f.Requester.Tag,
                 RequestedAt = f.RequestedAt
@@ -240,7 +240,7 @@ public class FriendshipService(UserAccountDbContext context, ILogger<FriendshipS
             .Select(f => new FriendRequestDto
             {
                 Id = f.Id,
-                AddresseeId = f.Addressee.Id,
+                AddresseeId = f.Addressee!.Id,
                 AddresseeName = f.Addressee.Name,
                 AddresseeTag = f.Addressee.Tag,
                 RequestedAt = f.RequestedAt
