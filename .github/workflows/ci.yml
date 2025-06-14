@@ -89,6 +89,8 @@ jobs:
           echo "mongo_db is healthy!"
 
       - name: Run unit tests
+        env:
+          MONGO_CONNECTION_STRING: "mongodb://${{ secrets.MONGO_USER }}:${{ secrets.MONGO_PASSWORD }}@localhost:27017"
         run: dotnet test ./ChatSystem.sln --no-build --configuration Release --collect:"XPlat Code Coverage" --logger "trx;LogFileName=test-results.trx"
 
       - name: Upload test results

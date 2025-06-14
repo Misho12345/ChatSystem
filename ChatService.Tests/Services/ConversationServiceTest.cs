@@ -11,20 +11,30 @@ namespace ChatService.Tests.Services;
 
 public class ConversationServiceTest : IDisposable
 {
-    private readonly MongoDbRunner _runner;
     private readonly ConversationService _service;
+    private readonly MongoDbRunner _runner;
 
     public ConversationServiceTest()
     {
-        _runner = MongoDbRunner.Start();
-        var client = new MongoClient(_runner.ConnectionString);
-        var database = client.GetDatabase("TestDb");
+        var connectionString = Environment.GetEnvironmentVariable("MONGO_CONNECTION_STRING");
+
+        if (string.IsNullOrEmpty(connectionString))
+        {
+            _runner = MongoDbRunner.Start();
+            connectionString = _runner.ConnectionString;
+        }
+        
+        var client = new MongoClient(connectionString);
+        
+        var dbName = $"TestDb_{Guid.NewGuid()}";
+        var database = client.GetDatabase(dbName);
+        
         _service = new ConversationService(database);
     }
-
+    
     public void Dispose()
     {
-        _runner.Dispose();
+        _runner?.Dispose();
     }
 
     [Fact]
@@ -56,7 +66,7 @@ public class ConversationServiceTest : IDisposable
         var u2 = Guid.NewGuid();
         var conv = await _service.CreateOrGetConversationAsync(u1, u2);
 
-        var msg = await _service.AddMessageAsync(conv.Id, u1, "tag", "hello", "text");
+        var msg = await _service.AddMessageAsync(conv.Id!, u1, "tag", "hello", "text");
         Assert.NotNull(msg.Id);
         Assert.Equal(conv.Id, msg.ConversationId);
 
@@ -73,7 +83,7 @@ public class ConversationServiceTest : IDisposable
         var u2 = Guid.NewGuid();
         var conv = await _service.CreateOrGetConversationAsync(u1, u2);
 
-        var m1 = await _service.AddMessageAsync(conv.Id, u1, "t", "first");
+        var m1 = await _service.AddMessageAsync(conv.Id!, u1, "t", "first");
         await Task.Delay(10);
         var m2 = await _service.AddMessageAsync(conv.Id, u1, "t", "second");
         await Task.Delay(10);
@@ -96,7 +106,7 @@ public class ConversationServiceTest : IDisposable
         var u2 = Guid.NewGuid();
         var u3 = Guid.NewGuid();
         var conv = await _service.CreateOrGetConversationAsync(u1, u2);
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _service.GetMessagesAsync(conv.Id, u3, null, 10));
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _service.GetMessagesAsync(conv.Id!, u3, null, 10));
     }
 
     [Fact]
@@ -107,7 +117,7 @@ public class ConversationServiceTest : IDisposable
         var u3 = Guid.NewGuid();
         var conv = await _service.CreateOrGetConversationAsync(u1, u2);
 
-        var fetched = await _service.GetByIdAsync(conv.Id, u1);
+        var fetched = await _service.GetByIdAsync(conv.Id!, u1);
         Assert.Equal(conv.Id, fetched.Id);
 
         await Assert.ThrowsAsync<KeyNotFoundException>(() => _service.GetByIdAsync(conv.Id, u3));
@@ -121,6 +131,7 @@ public class ConversationServiceTest : IDisposable
         var c1 = await _service.CreateOrGetConversationAsync(u1, u2);
         await Task.Delay(10);
         var c2 = await _service.CreateOrGetConversationAsync(u1, Guid.NewGuid());
+        await _service.AddMessageAsync(c2.Id!, u1, "t", "latest message");
 
         var list = await _service.GetUserConversationsAsync(u1);
         Assert.Equal(2, list.Count);
