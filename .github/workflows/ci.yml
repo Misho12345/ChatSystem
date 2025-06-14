@@ -90,7 +90,7 @@ jobs:
 
       - name: Run unit tests
         env:
-          MONGO_CONNECTION_STRING: "mongodb://${{ secrets.MONGO_USER }}:${{ secrets.MONGO_PASSWORD }}@localhost:27017"
+          MONGO_CONNECTION_STRING: "mongodb://my_mongo_admin:my_mongo_admin_password@localhost:27017/?authSource=admin"
         run: dotnet test ./ChatSystem.sln --no-build --configuration Release --collect:"XPlat Code Coverage" --logger "trx;LogFileName=test-results.trx"
 
       - name: Upload test results
