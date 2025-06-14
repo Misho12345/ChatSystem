@@ -34,11 +34,13 @@ public class FriendshipService(UserAccountDbContext context, ILogger<FriendshipS
             {
                 FriendshipStatus.Accepted => new FriendshipResultDto
                 {
-                    Success = false, Message = "You are already friends."
+                    Success = false,
+                    Message = "You are already friends."
                 },
                 FriendshipStatus.Pending when existingFriendship.RequesterId == requesterId => new FriendshipResultDto
                 {
-                    Success = false, Message = "Friend request already sent."
+                    Success = false,
+                    Message = "Friend request already sent."
                 },
                 FriendshipStatus.Pending when existingFriendship.AddresseeId == requesterId => new FriendshipResultDto
                 {
@@ -47,7 +49,8 @@ public class FriendshipService(UserAccountDbContext context, ILogger<FriendshipS
                 },
                 FriendshipStatus.Blocked => new FriendshipResultDto
                 {
-                    Success = false, Message = "Unable to send friend request due to a block."
+                    Success = false,
+                    Message = "Unable to send friend request due to a block."
                 },
                 _ => throw new ArgumentOutOfRangeException()
             };
@@ -80,10 +83,12 @@ public class FriendshipService(UserAccountDbContext context, ILogger<FriendshipS
                 RequestedAt = friendship.RequestedAt
             };
             await friendshipHubContext.Clients.Group(addresseeId.ToString()).SendAsync("NewFriendRequest", requestDto);
-            
+
             return new FriendshipResultDto
             {
-                Success = true, Message = "Friend request sent.", FriendshipId = friendship.Id,
+                Success = true,
+                Message = "Friend request sent.",
+                FriendshipId = friendship.Id,
                 Status = friendship.Status
             };
         }
@@ -107,13 +112,13 @@ public class FriendshipService(UserAccountDbContext context, ILogger<FriendshipS
         if (friendship.AddresseeId != currentUserId)
         {
             return new FriendshipResultDto
-                { Success = false, Message = "You are not authorized to accept this request." };
+            { Success = false, Message = "You are not authorized to accept this request." };
         }
 
         if (friendship.Status != FriendshipStatus.Pending)
         {
             return new FriendshipResultDto
-                { Success = false, Message = $"Request is no longer pending (current status: {friendship.Status})." };
+            { Success = false, Message = $"Request is no longer pending (current status: {friendship.Status})." };
         }
 
         friendship.Status = FriendshipStatus.Accepted;
@@ -124,13 +129,15 @@ public class FriendshipService(UserAccountDbContext context, ILogger<FriendshipS
             context.Friendships.Update(friendship);
             await context.SaveChangesAsync();
             logger.LogInformation("Friend request {FriendshipId} accepted by {UserId}.", friendshipId, currentUserId);
-            
+
             await friendshipHubContext.Clients.Group(friendship.RequesterId.ToString()).SendAsync("FriendRequestProcessed");
             await friendshipHubContext.Clients.Group(friendship.AddresseeId.ToString()).SendAsync("FriendRequestProcessed");
-            
+
             return new FriendshipResultDto
             {
-                Success = true, Message = "Friend request accepted.", FriendshipId = friendship.Id,
+                Success = true,
+                Message = "Friend request accepted.",
+                FriendshipId = friendship.Id,
                 Status = friendship.Status
             };
         }
@@ -153,13 +160,13 @@ public class FriendshipService(UserAccountDbContext context, ILogger<FriendshipS
         if (friendship.AddresseeId != currentUserId && friendship.RequesterId != currentUserId)
         {
             return new FriendshipResultDto
-                { Success = false, Message = "You are not authorized to decline/cancel this request." };
+            { Success = false, Message = "You are not authorized to decline/cancel this request." };
         }
 
         if (friendship.Status != FriendshipStatus.Pending)
         {
             return new FriendshipResultDto
-                { Success = false, Message = $"Request is no longer pending (current status: {friendship.Status})." };
+            { Success = false, Message = $"Request is no longer pending (current status: {friendship.Status})." };
         }
 
         context.Friendships.Remove(friendship);
@@ -169,13 +176,15 @@ public class FriendshipService(UserAccountDbContext context, ILogger<FriendshipS
             await context.SaveChangesAsync();
             logger.LogInformation("Friend request {FriendshipId} declined/cancelled by {UserId}.", friendshipId,
                 currentUserId);
-            
+
             await friendshipHubContext.Clients.Group(friendship.RequesterId.ToString()).SendAsync("FriendRequestProcessed");
             await friendshipHubContext.Clients.Group(friendship.AddresseeId.ToString()).SendAsync("FriendRequestProcessed");
 
             return new FriendshipResultDto
             {
-                Success = true, Message = "Friend request declined/cancelled.", FriendshipId = friendship.Id,
+                Success = true,
+                Message = "Friend request declined/cancelled.",
+                FriendshipId = friendship.Id,
                 Status = FriendshipStatus.Declined
             };
         }
@@ -197,11 +206,11 @@ public class FriendshipService(UserAccountDbContext context, ILogger<FriendshipS
         if (friendship == null)
         {
             return new FriendshipResultDto
-                { Success = false, Message = "Friendship not found or you are not friends." };
+            { Success = false, Message = "Friendship not found or you are not friends." };
         }
 
         var otherUserId = friendship.RequesterId == userId ? friendship.AddresseeId : friendship.RequesterId;
-        
+
         context.Friendships.Remove(friendship);
 
         try
@@ -210,9 +219,9 @@ public class FriendshipService(UserAccountDbContext context, ILogger<FriendshipS
             logger.LogInformation(
                 "Friendship between {UserId1} and {UserId2} (FriendshipId: {FriendshipId}) removed by {RemoverId}.",
                 friendship.RequesterId, friendship.AddresseeId, friendship.Id, userId);
-            
+
             await friendshipHubContext.Clients.Group(otherUserId.ToString()).SendAsync("FriendshipRemoved");
-            
+
             return new FriendshipResultDto { Success = true, Message = "Friend removed." };
         }
         catch (DbUpdateException ex)

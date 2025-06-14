@@ -5,7 +5,7 @@ namespace UserAccountService.Models;
 
 public sealed class RefreshToken
 {
-    [MaxLength(8192)] [Key] public required string Token { get; set; }
+    [MaxLength(8192)][Key] public required string Token { get; set; }
 
     [MaxLength(255)] public required string JwtId { get; set; }
 

@@ -13,7 +13,7 @@ public sealed class User
     [MaxLength(50)] public required string Tag { get; set; }
 
 
-    [MaxLength(255)] [EmailAddress] public required string Email { get; set; }
+    [MaxLength(255)][EmailAddress] public required string Email { get; set; }
 
 
     [MaxLength(255)] public required string PasswordHash { get; set; }

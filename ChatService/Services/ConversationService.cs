@@ -104,7 +104,7 @@ public class ConversationService(IMongoDatabase database) : IConversationService
             .Limit(limit)
             .ToListAsync();
     }
-    
+
     public async Task<Conversation> GetByIdAsync(string conversationId, Guid requestingUserId)
     {
         var conv = await _conversations.Find(c => c.Id == conversationId).FirstOrDefaultAsync();

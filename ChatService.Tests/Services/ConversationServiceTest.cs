@@ -23,15 +23,15 @@ public class ConversationServiceTest : IDisposable
             _runner = MongoDbRunner.Start();
             connectionString = _runner.ConnectionString;
         }
-        
+
         var client = new MongoClient(connectionString);
-        
+
         var dbName = $"TestDb_{Guid.NewGuid()}";
         var database = client.GetDatabase(dbName);
-        
+
         _service = new ConversationService(database);
     }
-    
+
     public void Dispose()
     {
         _runner?.Dispose();

@@ -45,11 +45,11 @@ public class FriendshipServiceTest : IDisposable
         _friendshipService = new FriendshipService(_context, mockLogger.Object, mockHubContext.Object);
 
         _user1 = new User
-            { Id = Guid.NewGuid(), Name = "User One", Tag = "one#1111", PasswordHash = "hash", Email = "on@on.on" };
+        { Id = Guid.NewGuid(), Name = "User One", Tag = "one#1111", PasswordHash = "hash", Email = "on@on.on" };
         _user2 = new User
-            { Id = Guid.NewGuid(), Name = "User Two", Tag = "two#2222", PasswordHash = "hash", Email = "tw@tw.tw" };
+        { Id = Guid.NewGuid(), Name = "User Two", Tag = "two#2222", PasswordHash = "hash", Email = "tw@tw.tw" };
         var user3 = new User
-            { Id = Guid.NewGuid(), Name = "User Three", Tag = "three#3333", PasswordHash = "hash", Email = "tr@tr.tr" };
+        { Id = Guid.NewGuid(), Name = "User Three", Tag = "three#3333", PasswordHash = "hash", Email = "tr@tr.tr" };
 
         _context.Users.AddRange(_user1, _user2, user3);
         _context.SaveChanges();
@@ -105,7 +105,10 @@ public class FriendshipServiceTest : IDisposable
     {
         var request = new Friendship
         {
-            Id = Guid.NewGuid(), RequesterId = _user1.Id, AddresseeId = _user2.Id, Status = FriendshipStatus.Pending
+            Id = Guid.NewGuid(),
+            RequesterId = _user1.Id,
+            AddresseeId = _user2.Id,
+            Status = FriendshipStatus.Pending
         };
         await _context.Friendships.AddAsync(request);
         await _context.SaveChangesAsync();
@@ -142,7 +145,10 @@ public class FriendshipServiceTest : IDisposable
     {
         var request = new Friendship
         {
-            Id = Guid.NewGuid(), RequesterId = _user1.Id, AddresseeId = _user2.Id, Status = FriendshipStatus.Pending
+            Id = Guid.NewGuid(),
+            RequesterId = _user1.Id,
+            AddresseeId = _user2.Id,
+            Status = FriendshipStatus.Pending
         };
         await _context.Friendships.AddAsync(request);
         await _context.SaveChangesAsync();
@@ -170,7 +176,10 @@ public class FriendshipServiceTest : IDisposable
     {
         var friendship = new Friendship
         {
-            Id = Guid.NewGuid(), RequesterId = _user1.Id, AddresseeId = _user2.Id, Status = FriendshipStatus.Accepted,
+            Id = Guid.NewGuid(),
+            RequesterId = _user1.Id,
+            AddresseeId = _user2.Id,
+            Status = FriendshipStatus.Accepted,
             RespondedAt = DateTime.UtcNow
         };
         await _context.Friendships.AddAsync(friendship);

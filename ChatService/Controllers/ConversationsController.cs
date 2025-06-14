@@ -24,11 +24,11 @@ public class ConversationsController(IConversationService conversationService, I
         throw new InvalidOperationException("User ID not found in token.");
     }
 
-    private string GetUserTag() 
+    private string GetUserTag()
     {
         return User.FindFirstValue("tag") ?? "UnknownUser";
     }
-    
+
 
     [HttpGet("{conversationId}/messages")] // GET /api/conversations/{conversationId}/messages?beforeTimestamp=...&limit=...
     public async Task<IActionResult> GetMessages(string conversationId, [FromQuery] DateTime? beforeTimestamp,
@@ -114,7 +114,7 @@ public class ConversationsController(IConversationService conversationService, I
             conversation.Id, initiatorId, request.RecipientId);
         return Ok(conversationDto);
     }
-    
+
     [HttpGet]
     public async Task<IActionResult> GetConversations()
     {

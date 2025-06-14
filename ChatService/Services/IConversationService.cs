@@ -11,7 +11,7 @@ public interface IConversationService
 
     Task<List<Message>> GetMessagesAsync(string conversationId, Guid requestingUserId, DateTime? beforeTimestamp,
         int limit);
-    
+
     Task<Conversation> GetByIdAsync(string conversationId, Guid requestingUserId);
 
     Task<List<Conversation>> GetUserConversationsAsync(Guid userId);
