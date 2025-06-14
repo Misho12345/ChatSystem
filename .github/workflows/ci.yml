@@ -45,13 +45,22 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Create .env file
+        run: |
+          echo "POSTGRES_PASSWORD=my_pg_password" >> .env
+          echo "POSTGRES_DB=my_pg_db" >> .env
+          echo "MONGO_USER=my_mongo_admin" >> .env
+          echo "MONGO_PASSWORD=my_mongo_admin_password" >> .env
+          echo "MONGO_DB=my_mongo_db" >> .env
+          echo "JWT_SECRET=this_is_a_very_long_secret_key_with_at_least_32_chars" >> .env
+
       - name: Build and start services
         run: |
           docker compose build
           docker compose up -d
 
       - name: Wait for services to be healthy
-        run: sleep 15
+        run: sleep 20
 
       - name: Check running containers
         run: docker compose ps
