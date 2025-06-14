@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace UserAccountService.Models;
 
-public class RefreshToken
+public sealed class RefreshToken
 {
     [Key] public required string Token { get; set; }
 
@@ -12,7 +12,7 @@ public class RefreshToken
 
 
     public Guid UserId { get; set; }
-    [ForeignKey("UserId")] public virtual User User { get; set; }
+    [ForeignKey("UserId")] public User User { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime ExpiryDate { get; set; }

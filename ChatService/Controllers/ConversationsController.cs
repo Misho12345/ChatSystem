@@ -28,34 +28,7 @@ public class ConversationsController(IConversationService conversationService, I
     {
         return User.FindFirstValue("tag") ?? "UnknownUser";
     }
-
-
-    [HttpGet] // GET /api/conversations
-    public async Task<IActionResult> GetUserConversations()
-    {
-        var userId = GetUserId();
-        logger.LogInformation("Fetching conversations for User ID: {UserId}", userId);
-
-        var conversations = await conversationService.GetUserConversationsAsync(userId);
-
-        var conversationDtos = conversations.Select(c => new ConversationDto(
-            c.Id,
-            c.ParticipantIds,
-            c.LastMessage != null
-                ? new LastMessageDto(
-                    c.LastMessage.MessageId,
-                    c.LastMessage.SenderId,
-                    "Tag",
-                    c.LastMessage.Text,
-                    c.LastMessage.Timestamp)
-                : null,
-            c.CreatedAt,
-            c.UpdatedAt
-        )).ToList();
-
-        logger.LogInformation("Returning {Count} conversations for User ID: {UserId}", conversationDtos.Count, userId);
-        return Ok(conversationDtos);
-    }
+    
 
     [HttpGet("{conversationId}/messages")] // GET /api/conversations/{conversationId}/messages?beforeTimestamp=...&limit=...
     public async Task<IActionResult> GetMessages(string conversationId, [FromQuery] DateTime? beforeTimestamp,
@@ -66,8 +39,7 @@ public class ConversationsController(IConversationService conversationService, I
             "Fetching messages for Conversation ID: {ConversationId}, User ID: {UserId}, Before: {BeforeTimestamp}, Limit: {Limit}",
             conversationId, userId, beforeTimestamp, limit);
 
-        // TODO: Add a check in IConversationService.GetMessagesAsync to ensure 'userId' is a participant of 'conversationId' for security.
-        var messages = await conversationService.GetMessagesAsync(conversationId, beforeTimestamp, limit);
+        var messages = await conversationService.GetMessagesAsync(conversationId, userId, beforeTimestamp, limit);
 
         // Map to DTOs. MessageDto requires SenderTag.
         // This is a common challenge in microservices. The ChatService might not know the tag.
@@ -129,7 +101,7 @@ public class ConversationsController(IConversationService conversationService, I
                 ? new LastMessageDto(
                     conversation.LastMessage.MessageId,
                     conversation.LastMessage.SenderId,
-                    "Tag", // Placeholder for LastMessage.SenderTag
+                    conversation.LastMessage.SenderId.ToString(), // Placeholder for LastMessage.SenderTag
                     conversation.LastMessage.Text,
                     conversation.LastMessage.Timestamp)
                 : null,
@@ -141,5 +113,29 @@ public class ConversationsController(IConversationService conversationService, I
             "Conversation initiated/retrieved: {ConversationId} for User ID: {InitiatorId} and Recipient ID: {RecipientId}",
             conversation.Id, initiatorId, request.RecipientId);
         return Ok(conversationDto);
+    }
+    
+    [HttpGet]
+    public async Task<IActionResult> GetConversations()
+    {
+        var userId = GetUserId();
+        var conversations = await conversationService.GetUserConversationsAsync(userId);
+        var dtos = conversations
+            .Select(c => new ConversationDto(
+                c.Id,
+                c.ParticipantIds,
+                c.LastMessage != null
+                    ? new LastMessageDto(
+                        c.LastMessage.MessageId,
+                        c.LastMessage.SenderId,
+                        c.LastMessage.SenderId.ToString(),
+                        c.LastMessage.Text,
+                        c.LastMessage.Timestamp)
+                    : null,
+                c.CreatedAt,
+                c.UpdatedAt))
+            .ToList();
+
+        return Ok(dtos);
     }
 }

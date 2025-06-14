@@ -32,7 +32,7 @@ builder.Services.AddAuthentication(options =>
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Secret)),
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings!.Secret)),
         ValidateIssuer = true,
         ValidIssuer = jwtSettings.Issuer,
         ValidateAudience = true,
@@ -49,7 +49,9 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowFrontend",
         policyBuilder =>
         {
-            policyBuilder.WithOrigins("http://localhost:3000")
+            policyBuilder.WithOrigins(
+                    "http://localhost:3000",
+                    "https://localhost:3000")
                         .AllowAnyHeader()
                         .AllowAnyMethod()
                         .AllowCredentials();

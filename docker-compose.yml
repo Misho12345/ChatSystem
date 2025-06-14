@@ -16,7 +16,8 @@ services:
       - JwtSettings__ExpiryMinutes=15
       - JwtSettings__RefreshTokenExpiryDays=7
     depends_on:
-      - postgres_db
+      postgres_db:
+        condition: service_healthy
     networks:
       - app-network
   
@@ -65,7 +66,7 @@ services:
     networks:
       - app-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d user_data_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -73,8 +74,8 @@ services:
   mongo_db:
     image: mongo:latest
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
     volumes:
       - mongo_data:/data/db
     ports:

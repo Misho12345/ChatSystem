@@ -53,7 +53,7 @@ public class ChatHub(IConversationService conversationService, ILogger<ChatHub> 
 
         if (string.IsNullOrWhiteSpace(messageText)) return;
 
-        var message = await conversationService.AddMessageAsync(conversationId, senderId, messageText);
+        var message = await conversationService.AddMessageAsync(conversationId, senderId, senderTag, messageText);
 
         var messageDto = new MessageDto(message.Id, message.ConversationId, message.SenderId, senderTag, message.Text,
             message.Timestamp, message.MessageType);

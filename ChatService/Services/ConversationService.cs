@@ -51,13 +51,14 @@ public class ConversationService(IMongoDatabase database) : IConversationService
         return conversation;
     }
 
-    public async Task<Message> AddMessageAsync(string conversationId, Guid senderId, string text,
+    public async Task<Message> AddMessageAsync(string conversationId, Guid senderId, string senderTag, string text,
         string messageType = "text")
     {
         var message = new Message
         {
             ConversationId = conversationId,
             SenderId = senderId,
+            SenderTag = senderTag,
             Text = text,
             MessageType = messageType,
             Timestamp = DateTime.UtcNow
@@ -80,20 +81,36 @@ public class ConversationService(IMongoDatabase database) : IConversationService
         return message;
     }
 
-    public async Task<List<Message>> GetMessagesAsync(string conversationId, DateTime? beforeTimestamp, int limit)
+    public async Task<List<Message>> GetMessagesAsync(string conversationId, Guid requestingUserId,
+        DateTime? beforeTimestamp, int limit)
     {
-        var filterBuilder = Builders<Message>.Filter;
-        var filter = filterBuilder.Eq(m => m.ConversationId, conversationId);
+        var conv = await _conversations.Find(c => c.Id == conversationId).FirstOrDefaultAsync();
+
+        if (conv == null || !conv.ParticipantIds.Contains(requestingUserId))
+        {
+            throw new UnauthorizedAccessException("Access denied.");
+        }
+
+        var filter = Builders<Message>.Filter.Eq(m => m.ConversationId, conversationId);
+
 
         if (beforeTimestamp.HasValue)
         {
-            filter &= filterBuilder.Lt(m => m.Timestamp, beforeTimestamp.Value);
+            filter &= Builders<Message>.Filter.Lt(m => m.Timestamp, beforeTimestamp.Value);
         }
 
         return await _messages.Find(filter)
             .Sort(Builders<Message>.Sort.Descending(m => m.Timestamp))
             .Limit(limit)
             .ToListAsync();
+    }
+    
+    public async Task<Conversation> GetByIdAsync(string conversationId, Guid requestingUserId)
+    {
+        var conv = await _conversations.Find(c => c.Id == conversationId).FirstOrDefaultAsync();
+        if (conv == null || !conv.ParticipantIds.Contains(requestingUserId))
+            throw new KeyNotFoundException("Conversation not found or access denied.");
+        return conv;
     }
 
     public async Task<List<Conversation>> GetUserConversationsAsync(Guid userId)

@@ -11,18 +11,18 @@ public enum FriendshipStatus
     Blocked
 }
 
-public class Friendship
+public sealed class Friendship
 {
     [Key] public Guid Id { get; set; }
 
 
     public Guid RequesterId { get; set; }
 
-    public virtual User Requester { get; set; }
+    public User Requester { get; set; }
 
 
     public Guid AddresseeId { get; set; }
-    [ForeignKey("AddresseeId")] public virtual User Addressee { get; set; }
+    [ForeignKey("AddresseeId")] public User Addressee { get; set; }
 
 
     public FriendshipStatus Status { get; set; }

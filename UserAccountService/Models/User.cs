@@ -2,7 +2,7 @@
 
 namespace UserAccountService.Models;
 
-public class User
+public sealed class User
 {
     [Key] public Guid Id { get; set; }
 
@@ -20,7 +20,7 @@ public class User
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    public virtual ICollection<Friendship> Friendships1 { get; set; } = new List<Friendship>();
-    public virtual ICollection<Friendship> Friendships2 { get; set; } = new List<Friendship>();
-    public virtual ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
+    public ICollection<Friendship> Friendships1 { get; set; } = new List<Friendship>();
+    public ICollection<Friendship> Friendships2 { get; set; } = new List<Friendship>();
+    public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 }
