@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using UserAccountService.Data;
@@ -11,9 +12,11 @@ using UserAccountService.Data;
 namespace UserAccountService.Migrations
 {
     [DbContext(typeof(UserAccountDbContext))]
-    partial class UserAccountDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250614200103_AddUserFriendshipAndTokenModels")]
+    partial class AddUserFriendshipAndTokenModels
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
