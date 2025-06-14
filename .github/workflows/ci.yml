@@ -1,17 +1,14 @@
-﻿name: Build, Test and Publish Microservices
+﻿name: Build and Test
 
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
   pull_request:
-    branches: [ main ]
+    branches: [ master ]
   workflow_dispatch:
 
-env:
-  REGISTRY: docker.io
-  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-
 jobs:
+
   lint:
     name: Code Inspection
     runs-on: ubuntu-latest
@@ -28,6 +25,7 @@ jobs:
         run: dotnet tool install -g dotnet-format
 
       - name: Run linter
+
         run: dotnet format --verify-no-changes --verbosity diagnostic
 
   test:
@@ -50,6 +48,7 @@ jobs:
         run: dotnet build ./ChatSystem.sln --no-restore --configuration Release
 
       - name: Run unit tests with coverage
+
         run: dotnet test ./ChatSystem.sln --no-build --configuration Release --collect:"XPlat Code Coverage" --logger "trx;LogFileName=test-results.trx"
 
       - name: Upload test results
@@ -66,15 +65,10 @@ jobs:
           name: coverage-report
           path: "**/TestResults/**/coverage.cobertura.xml"
 
-  build-and-publish:
-    name: Build & Publish Docker Images
+  verify-services-run:
+    name: Verify Services with Docker Compose
     runs-on: ubuntu-latest
     needs: test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    permissions:
-      contents: read
-      packages: write
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -82,127 +76,18 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ env.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build and start services
+        run: |
+          docker-compose build
+          docker-compose up -d
 
-      - name: Extract metadata for ChatService
-        id: meta_chat
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.DOCKERHUB_USERNAME }}/chatservice
-          tags: |
-            type=sha,prefix=,format=short
-            type=raw,value=latest,enable={{is_default_branch}}
-      - name: Build ChatService image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./ChatService
-          file: ./ChatService/Dockerfile
-          push: false
-          load: true
-          tags: ${{ steps.meta_chat.outputs.tags }}
-          labels: ${{ steps.meta_chat.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-      - name: Scan ChatService image
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: '${{ env.REGISTRY }}/${{ env.DOCKERHUB_USERNAME }}/chatservice:latest'
-          format: 'table'
-          exit-code: '1'
-          ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH'
-      - name: Push ChatService image to registry
-        if: success()
-        run: docker push --all-tags ${{ env.REGISTRY }}/${{ env.DOCKERHUB_USERNAME }}/chatservice
+      - name: Check running containers
+        run: docker-compose ps
 
-      - name: Extract metadata for UserAccountService
-        id: meta_user
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.DOCKERHUB_USERNAME }}/useraccountservice
-          tags: |
-            type=sha,prefix=,format=short
-            type=raw,value=latest,enable={{is_default_branch}}
-      - name: Build UserAccountService image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./UserAccountService
-          file: ./UserAccountService/Dockerfile
-          push: false
-          load: true
-          tags: ${{ steps.meta_user.outputs.tags }}
-          labels: ${{ steps.meta_user.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-      - name: Scan UserAccountService image
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: '${{ env.REGISTRY }}/${{ env.DOCKERHUB_USERNAME }}/useraccountservice:latest'
-          format: 'table'
-          exit-code: '1'
-          ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH'
-      - name: Push UserAccountService image to registry
-        if: success()
-        run: docker push --all-tags ${{ env.REGISTRY }}/${{ env.DOCKERHUB_USERNAME }}/useraccountservice
+      - name: View logs for troubleshooting (optional)
+        if: failure()
+        run: docker-compose logs
 
-      - name: Extract metadata for Frontend
-        id: meta_frontend
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.DOCKERHUB_USERNAME }}/frontend
-          tags: |
-            type=sha,prefix=,format=short
-            type=raw,value=latest,enable={{is_default_branch}}
-      - name: Build Frontend image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./Frontend
-          file: ./Frontend/Dockerfile
-          push: false
-          load: true
-          tags: ${{ steps.meta_frontend.outputs.tags }}
-          labels: ${{ steps.meta_frontend.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-      - name: Scan Frontend image
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: '${{ env.REGISTRY }}/${{ env.DOCKERHUB_USERNAME }}/frontend:latest'
-          format: 'table'
-          exit-code: '1'
-          ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH'
-      - name: Push Frontend image to registry
-        if: success()
-        run: docker push --all-tags ${{ env.REGISTRY }}/${{ env.DOCKERHUB_USERNAME }}/frontend
-
-  deploy:
-    name: Deploy with Docker Compose
-    runs-on: ubuntu-latest
-    needs: build-and-publish
-    environment:
-      name: production
-      url: https://your-app-url.com
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Deploy to server
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            cd /path/to/your/app # Replace with the path to your app on the server
-            docker-compose pull
-            docker-compose up -d --remove-orphans
-            docker image prune -f
+      - name: Tear down services
+        if: always()
+        run: docker-compose down
