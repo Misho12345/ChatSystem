@@ -1,14 +1,15 @@
 ﻿document.addEventListener('DOMContentLoaded', async () => {
-    Auth.init(); // Load tokens, check if on main.html and redirect if not logged in
+    Auth.init();
     if (!Auth.isLoggedIn() && window.location.pathname.endsWith('main.html')) {
         window.location.href = 'index.html';
         return;
     }
-    if (!window.location.pathname.endsWith('main.html')) return; // Only run on main.html
+    if (!window.location.pathname.endsWith('main.html')) return;
 
-    UI.displayCurrentUser(); // Fetch and display current user info
+    await UI.displayCurrentUser();
     await loadInitialData();
     ChatClient.startConnection(Auth.getAccessToken());
+    NotificationClient.startConnection(Auth.getAccessToken());
 
     document.getElementById('logoutButton').addEventListener('click', Auth.logout);
     document.getElementById('searchButton').addEventListener('click', handleSearch);
@@ -38,7 +39,7 @@ async function loadInitialData() {
             Api.getFriends(),
             Api.getPendingFriendRequests()
         ]);
-        
+
         UI.renderFriendsList(friends);
         UI.renderFriendRequests(requests);
     } catch (error) {
@@ -111,12 +112,9 @@ async function handleFriendRequestAction(event) {
     try {
         if (action === 'accept') {
             await Api.acceptFriendRequest(requestId);
-            alert('Friend request accepted!');
         } else if (action === 'decline') {
             await Api.declineFriendRequest(requestId);
-            alert('Friend request declined.');
         }
-        await loadInitialData();
     } catch (error) {
         console.error(`Failed to ${action} friend request:`, error);
         if (error.status === 401) Auth.logout();

@@ -2,10 +2,12 @@
 using UserAccountService.Models;
 using UserAccountService.Models.DTOs;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.SignalR;
+using UserAccountService.Hubs;
 
 namespace UserAccountService.Services;
 
-public class FriendshipService(UserAccountDbContext context, ILogger<FriendshipService> logger)
+public class FriendshipService(UserAccountDbContext context, ILogger<FriendshipService> logger, IHubContext<FriendshipHub> friendshipHubContext)
     : IFriendshipService
 {
     public async Task<FriendshipResultDto> SendFriendRequestAsync(Guid requesterId, Guid addresseeId)
@@ -67,6 +69,18 @@ public class FriendshipService(UserAccountDbContext context, ILogger<FriendshipS
             logger.LogInformation(
                 "Friend request sent from {RequesterId} to {AddresseeId}. FriendshipId: {FriendshipId}", requesterId,
                 addresseeId, friendship.Id);
+
+            var requester = await context.Users.FindAsync(requesterId);
+            var requestDto = new FriendRequestDto
+            {
+                Id = friendship.Id,
+                RequesterId = requester!.Id,
+                RequesterName = requester.Name,
+                RequesterTag = requester.Tag,
+                RequestedAt = friendship.RequestedAt
+            };
+            await friendshipHubContext.Clients.Group(addresseeId.ToString()).SendAsync("NewFriendRequest", requestDto);
+            
             return new FriendshipResultDto
             {
                 Success = true, Message = "Friend request sent.", FriendshipId = friendship.Id,
@@ -110,6 +124,10 @@ public class FriendshipService(UserAccountDbContext context, ILogger<FriendshipS
             context.Friendships.Update(friendship);
             await context.SaveChangesAsync();
             logger.LogInformation("Friend request {FriendshipId} accepted by {UserId}.", friendshipId, currentUserId);
+            
+            await friendshipHubContext.Clients.Group(friendship.RequesterId.ToString()).SendAsync("FriendRequestProcessed");
+            await friendshipHubContext.Clients.Group(friendship.AddresseeId.ToString()).SendAsync("FriendRequestProcessed");
+            
             return new FriendshipResultDto
             {
                 Success = true, Message = "Friend request accepted.", FriendshipId = friendship.Id,
@@ -144,19 +162,21 @@ public class FriendshipService(UserAccountDbContext context, ILogger<FriendshipS
                 { Success = false, Message = $"Request is no longer pending (current status: {friendship.Status})." };
         }
 
-        friendship.Status = FriendshipStatus.Declined;
-        friendship.RespondedAt = DateTime.UtcNow;
+        context.Friendships.Remove(friendship);
 
         try
         {
-            context.Friendships.Update(friendship);
             await context.SaveChangesAsync();
             logger.LogInformation("Friend request {FriendshipId} declined/cancelled by {UserId}.", friendshipId,
                 currentUserId);
+            
+            await friendshipHubContext.Clients.Group(friendship.RequesterId.ToString()).SendAsync("FriendRequestProcessed");
+            await friendshipHubContext.Clients.Group(friendship.AddresseeId.ToString()).SendAsync("FriendRequestProcessed");
+
             return new FriendshipResultDto
             {
                 Success = true, Message = "Friend request declined/cancelled.", FriendshipId = friendship.Id,
-                Status = friendship.Status
+                Status = FriendshipStatus.Declined
             };
         }
         catch (DbUpdateException ex)
@@ -180,6 +200,8 @@ public class FriendshipService(UserAccountDbContext context, ILogger<FriendshipS
                 { Success = false, Message = "Friendship not found or you are not friends." };
         }
 
+        var otherUserId = friendship.RequesterId == userId ? friendship.AddresseeId : friendship.RequesterId;
+        
         context.Friendships.Remove(friendship);
 
         try
@@ -188,6 +210,9 @@ public class FriendshipService(UserAccountDbContext context, ILogger<FriendshipS
             logger.LogInformation(
                 "Friendship between {UserId1} and {UserId2} (FriendshipId: {FriendshipId}) removed by {RemoverId}.",
                 friendship.RequesterId, friendship.AddresseeId, friendship.Id, userId);
+            
+            await friendshipHubContext.Clients.Group(otherUserId.ToString()).SendAsync("FriendshipRemoved");
+            
             return new FriendshipResultDto { Success = true, Message = "Friend removed." };
         }
         catch (DbUpdateException ex)

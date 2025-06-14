@@ -1,9 +1,13 @@
 ﻿using System;
-using System.Linq;
+using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
+using Moq;
 using UserAccountService.Data;
+using UserAccountService.Hubs;
 using UserAccountService.Models;
 using UserAccountService.Models.DTOs;
 using UserAccountService.Services;
@@ -11,130 +15,180 @@ using Xunit;
 
 namespace UserAccountService.Tests.Services;
 
-public class FriendshipServiceTests
+public class FriendshipServiceTest : IDisposable
 {
-    private UserAccountDbContext CreateContext(string name)
+    private readonly UserAccountDbContext _context;
+    private readonly FriendshipService _friendshipService;
+    private readonly Mock<IHubClients> _mockClients;
+    private readonly Mock<IClientProxy> _mockClientProxy;
+
+    private readonly User _user1;
+    private readonly User _user2;
+
+    public FriendshipServiceTest()
     {
         var options = new DbContextOptionsBuilder<UserAccountDbContext>()
-            .UseInMemoryDatabase(name)
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options;
-        return new UserAccountDbContext(options);
+        _context = new UserAccountDbContext(options);
+
+        var mockLogger = new Mock<ILogger<FriendshipService>>();
+
+        var mockHubContext = new Mock<IHubContext<FriendshipHub>>();
+        _mockClients = new Mock<IHubClients>();
+        _mockClientProxy = new Mock<IClientProxy>();
+
+        mockHubContext.Setup(h => h.Clients).Returns(_mockClients.Object);
+        _mockClients.Setup(c => c.Group(It.IsAny<string>())).Returns(_mockClientProxy.Object);
+        _mockClients.Setup(c => c.Groups(It.IsAny<IReadOnlyList<string>>())).Returns(_mockClientProxy.Object);
+
+        _friendshipService = new FriendshipService(_context, mockLogger.Object, mockHubContext.Object);
+
+        _user1 = new User
+            { Id = Guid.NewGuid(), Name = "User One", Tag = "one#1111", PasswordHash = "hash", Email = "on@on.on" };
+        _user2 = new User
+            { Id = Guid.NewGuid(), Name = "User Two", Tag = "two#2222", PasswordHash = "hash", Email = "tw@tw.tw" };
+        var user3 = new User
+            { Id = Guid.NewGuid(), Name = "User Three", Tag = "three#3333", PasswordHash = "hash", Email = "tr@tr.tr" };
+
+        _context.Users.AddRange(_user1, _user2, user3);
+        _context.SaveChanges();
+    }
+
+    public void Dispose()
+    {
+        _context.Database.EnsureDeleted();
+        _context.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     [Fact]
-    public async Task SendFriendRequest_Succeeds_WhenValid()
+    public async Task SendFriendRequestAsync_WithValidUsers_CreatesPendingFriendshipAndNotifies()
     {
-        await using var ctx = CreateContext(nameof(SendFriendRequest_Succeeds_WhenValid));
-        var user1 = new User { Id = Guid.NewGuid(), Name = "A", Tag = "A#0001", Email = "a@test", PasswordHash = "h" };
-        var user2 = new User { Id = Guid.NewGuid(), Name = "B", Tag = "B#0001", Email = "b@test", PasswordHash = "h" };
-        ctx.Users.AddRange(user1, user2);
-        await ctx.SaveChangesAsync();
-
-        var svc = new FriendshipService(ctx, new NullLogger<FriendshipService>());
-        var result = await svc.SendFriendRequestAsync(user1.Id, user2.Id);
+        var result = await _friendshipService.SendFriendRequestAsync(_user1.Id, _user2.Id);
 
         Assert.True(result.Success);
         Assert.Equal(FriendshipStatus.Pending, result.Status);
-        Assert.NotNull(ctx.Friendships.SingleOrDefault(f => f.RequesterId == user1.Id && f.AddresseeId == user2.Id));
+        var friendship = await _context.Friendships.FindAsync(result.FriendshipId);
+        Assert.NotNull(friendship);
+        Assert.Equal(FriendshipStatus.Pending, friendship.Status);
+
+        _mockClients.Verify(clients => clients.Group(_user2.Id.ToString()), Times.Once);
+        _mockClientProxy.Verify(
+            x => x.SendCoreAsync(
+                "NewFriendRequest",
+                It.Is<object[]>(o => o != null && o.Length == 1 && o[0] is FriendRequestDto),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]
-    public async Task SendFriendRequest_Fails_WhenSelfRequest()
+    public async Task SendFriendRequestAsync_ToNonExistentUser_ReturnsError()
     {
-        await using var ctx = CreateContext(nameof(SendFriendRequest_Fails_WhenSelfRequest));
-        var user = new User { Id = Guid.NewGuid(), Name = "A", Tag = "A#0001", Email = "a@test", PasswordHash = "h" };
-        ctx.Users.Add(user);
-        await ctx.SaveChangesAsync();
-
-        var svc = new FriendshipService(ctx, new NullLogger<FriendshipService>());
-        var result = await svc.SendFriendRequestAsync(user.Id, user.Id);
+        var result = await _friendshipService.SendFriendRequestAsync(_user1.Id, Guid.NewGuid());
 
         Assert.False(result.Success);
-        Assert.Contains("yourself", result.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("Recipient user not found.", result.Message);
     }
 
     [Fact]
-    public async Task AcceptFriendRequest_Succeeds_WhenAuthorized()
+    public async Task SendFriendRequestAsync_ToSelf_ReturnsError()
     {
-        await using var ctx = CreateContext(nameof(AcceptFriendRequest_Succeeds_WhenAuthorized));
-        var requester = new User { Id = Guid.NewGuid(), Name = "A", Tag = "A#0001", Email = "a@test", PasswordHash = "h" };
-        var addressee = new User { Id = Guid.NewGuid(), Name = "B", Tag = "B#0001", Email = "b@test", PasswordHash = "h" };
-        var friendship = new Friendship
-        {
-            Id = Guid.NewGuid(),
-            RequesterId = requester.Id,
-            AddresseeId = addressee.Id,
-            Status = FriendshipStatus.Pending,
-            RequestedAt = DateTime.UtcNow
-        };
-        ctx.Users.AddRange(requester, addressee);
-        ctx.Friendships.Add(friendship);
-        await ctx.SaveChangesAsync();
+        var result = await _friendshipService.SendFriendRequestAsync(_user1.Id, _user1.Id);
 
-        var svc = new FriendshipService(ctx, new NullLogger<FriendshipService>());
-        var result = await svc.AcceptFriendRequestAsync(friendship.Id, addressee.Id);
+        Assert.False(result.Success);
+        Assert.Equal("Cannot send a friend request to yourself.", result.Message);
+    }
+
+    [Fact]
+    public async Task AcceptFriendRequestAsync_WithValidRequest_AcceptsAndNotifiesBothUsers()
+    {
+        var request = new Friendship
+        {
+            Id = Guid.NewGuid(), RequesterId = _user1.Id, AddresseeId = _user2.Id, Status = FriendshipStatus.Pending
+        };
+        await _context.Friendships.AddAsync(request);
+        await _context.SaveChangesAsync();
+
+        var result = await _friendshipService.AcceptFriendRequestAsync(request.Id, _user2.Id);
 
         Assert.True(result.Success);
-        var updated = await ctx.Friendships.FindAsync(friendship.Id);
-        Assert.Equal(FriendshipStatus.Accepted, updated!.Status);
-        Assert.NotNull(updated.RespondedAt);
+        Assert.Equal(FriendshipStatus.Accepted, result.Status);
+        var friendship = await _context.Friendships.FindAsync(request.Id);
+        Assert.NotNull(friendship);
+        Assert.Equal(FriendshipStatus.Accepted, friendship.Status);
+
+        _mockClients.Verify(clients => clients.Group(_user1.Id.ToString()), Times.Once);
+        _mockClients.Verify(clients => clients.Group(_user2.Id.ToString()), Times.Once);
+        _mockClientProxy.Verify(
+            x => x.SendCoreAsync(
+                "FriendRequestProcessed",
+                It.Is<object[]>(o => o.Length == 0),
+                It.IsAny<CancellationToken>()),
+            Times.Exactly(2));
     }
 
     [Fact]
-    public async Task DeclineFriendRequest_Succeeds_ForRequesterOrAddressee()
+    public async Task AcceptFriendRequestAsync_WithNonExistentRequest_ReturnsError()
     {
-        await using var ctx = CreateContext(nameof(DeclineFriendRequest_Succeeds_ForRequesterOrAddressee));
-        var u1 = new User { Id = Guid.NewGuid(), Name = "A", Tag = "A#0001", Email = "a@test", PasswordHash = "h" };
-        var u2 = new User { Id = Guid.NewGuid(), Name = "B", Tag = "B#0001", Email = "b@test", PasswordHash = "h" };
-        var f = new Friendship
+        var result = await _friendshipService.AcceptFriendRequestAsync(Guid.NewGuid(), _user2.Id);
+
+        Assert.False(result.Success);
+        Assert.Equal("Friend request not found.", result.Message);
+    }
+
+    [Fact]
+    public async Task DeclineFriendRequestAsync_ByAddressee_RemovesRequestAndNotifies()
+    {
+        var request = new Friendship
         {
-            Id = Guid.NewGuid(),
-            RequesterId = u1.Id,
-            AddresseeId = u2.Id,
-            Status = FriendshipStatus.Pending,
-            RequestedAt = DateTime.UtcNow
+            Id = Guid.NewGuid(), RequesterId = _user1.Id, AddresseeId = _user2.Id, Status = FriendshipStatus.Pending
         };
-        ctx.Users.AddRange(u1, u2);
-        ctx.Friendships.Add(f);
-        await ctx.SaveChangesAsync();
+        await _context.Friendships.AddAsync(request);
+        await _context.SaveChangesAsync();
+        _context.ChangeTracker.Clear();
 
-        var svc = new FriendshipService(ctx, new NullLogger<FriendshipService>());
-        var resultByAddressee = await svc.DeclineFriendRequestAsync(f.Id, u2.Id);
-        Assert.True(resultByAddressee.Success);
+        var result = await _friendshipService.DeclineFriendRequestAsync(request.Id, _user2.Id);
 
-        f.Status = FriendshipStatus.Pending;
-        ctx.Friendships.Update(f);
-        await ctx.SaveChangesAsync();
+        Assert.True(result.Success);
+        Assert.Equal(FriendshipStatus.Declined, result.Status);
+        var friendship = await _context.Friendships.FindAsync(request.Id);
+        Assert.Null(friendship);
 
-        var resultByRequester = await svc.DeclineFriendRequestAsync(f.Id, u1.Id);
-        Assert.True(resultByRequester.Success);
+        _mockClients.Verify(clients => clients.Group(_user1.Id.ToString()), Times.Once);
+        _mockClients.Verify(clients => clients.Group(_user2.Id.ToString()), Times.Once);
+        _mockClientProxy.Verify(
+            x => x.SendCoreAsync(
+                "FriendRequestProcessed",
+                It.Is<object[]>(o => o.Length == 0),
+                It.IsAny<CancellationToken>()),
+            Times.Exactly(2));
     }
 
     [Fact]
-    public async Task GetFriends_ReturnsAcceptedFriends()
+    public async Task RemoveFriendAsync_WithExistingFriendship_RemovesFriendAndNotifies()
     {
-        await using var ctx = CreateContext(nameof(GetFriends_ReturnsAcceptedFriends));
-        var u1 = new User { Id = Guid.NewGuid(), Name = "A", Tag = "A#0001", Email = "a@test", PasswordHash = "h" };
-        var u2 = new User { Id = Guid.NewGuid(), Name = "B", Tag = "B#0001", Email = "b@test", PasswordHash = "h" };
-        var accepted = new Friendship
+        var friendship = new Friendship
         {
-            Id = Guid.NewGuid(),
-            RequesterId = u1.Id,
-            AddresseeId = u2.Id,
-            Status = FriendshipStatus.Accepted,
-            RequestedAt = DateTime.UtcNow.AddDays(-1),
+            Id = Guid.NewGuid(), RequesterId = _user1.Id, AddresseeId = _user2.Id, Status = FriendshipStatus.Accepted,
             RespondedAt = DateTime.UtcNow
         };
-        ctx.Users.AddRange(u1, u2);
-        ctx.Friendships.Add(accepted);
-        await ctx.SaveChangesAsync();
+        await _context.Friendships.AddAsync(friendship);
+        await _context.SaveChangesAsync();
+        _context.ChangeTracker.Clear();
 
-        var svc = new FriendshipService(ctx, new NullLogger<FriendshipService>());
-        var friends = await svc.GetFriendsAsync(u1.Id);
-        var friendDtos = friends as FriendDto[] ?? friends.ToArray();
-            
-        Assert.Single(friendDtos);
-        Assert.Equal(u2.Id, friendDtos.First().Id);
-        Assert.Equal(accepted.Id, friendDtos.First().FriendshipId);
+        var result = await _friendshipService.RemoveFriendAsync(_user1.Id, _user2.Id);
+
+        Assert.True(result.Success);
+        var deletedFriendship = await _context.Friendships.FindAsync(friendship.Id);
+        Assert.Null(deletedFriendship);
+
+        _mockClients.Verify(clients => clients.Group(_user2.Id.ToString()), Times.Once);
+        _mockClientProxy.Verify(
+            x => x.SendCoreAsync(
+                "FriendshipRemoved",
+                It.Is<object[]>(o => o.Length == 0),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 }

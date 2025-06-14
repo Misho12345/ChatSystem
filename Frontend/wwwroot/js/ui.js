@@ -2,6 +2,28 @@
     let oldestMessageTimestamp = null;
     let isLoadingMessages = false;
 
+    function addFriendRequest(req) {
+        const listElement = document.getElementById('friendRequestsList');
+        const countElement = document.getElementById('friendRequestCount');
+
+        const noRequestsEl = listElement.querySelector('li');
+        if (noRequestsEl && noRequestsEl.textContent.includes("No pending requests")) {
+            listElement.innerHTML = '';
+        }
+
+        const li = document.createElement('li');
+        li.className = 'list-group-item d-flex justify-content-between align-items-center';
+        li.innerHTML = `
+            <span>${req.requesterName} (${req.requesterTag})</span>
+            <div>
+                <button class="btn btn-sm btn-success me-1" data-request-id="${req.id}" data-action="accept"><i class="fas fa-check"></i></button>
+                <button class="btn btn-sm btn-danger" data-request-id="${req.id}" data-action="decline"><i class="fas fa-times"></i></button>
+            </div>
+        `;
+        listElement.prepend(li);
+        countElement.textContent = parseInt(countElement.textContent, 10) + 1;
+    }
+
     function renderFriendsList(friends) {
         const listElement = document.getElementById('friendsList');
         const countElement = document.getElementById('friendsCount');
@@ -167,10 +189,10 @@
     }
 
     function setActiveFriend(friendId) {
-        document.querySelectorAll('#friendsList.list-group-item').forEach(item => {
+        document.querySelectorAll('#friendsList .list-group-item').forEach(item => {
             item.classList.remove('active');
         });
-        const activeItem = document.querySelector(`#friendsList.list-group-item[data-friend-id="${friendId}"]`);
+        const activeItem = document.querySelector(`#friendsList .list-group-item[data-friend-id="${friendId}"]`);
         if (activeItem) {
             activeItem.classList.add('active');
         }
@@ -213,6 +235,7 @@
         scrollToBottom,
         handleScrollForMessages,
         setActiveFriend,
-        displayCurrentUser
+        displayCurrentUser,
+        addFriendRequest
     };
 })();
