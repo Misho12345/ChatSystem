@@ -45,7 +45,7 @@ public class TokenService(UserAccountDbContext context, IOptions<JwtSettings> jw
             JwtId = accessTokenSecurityToken.Id,
             UserId = user.Id,
             CreatedAt = DateTime.UtcNow,
-            ExpiryDate = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiryDays)
+            ExpiryDate = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiryDays),
         };
 
         context.RefreshTokens.Add(newRefreshToken);

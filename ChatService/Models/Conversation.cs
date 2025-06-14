@@ -20,11 +20,11 @@ public class Conversation
 
 public class EmbeddedMessage
 {
-    public string MessageId { get; set; }
+    public required string MessageId { get; set; }
 
 
     [BsonRepresentation(BsonType.String)]
     public Guid SenderId { get; set; }
-    public string Text { get; set; }
+    public required string Text { get; set; }
     public DateTime Timestamp { get; set; }
 }

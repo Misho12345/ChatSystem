@@ -2,17 +2,15 @@
 
 on:
   push:
-    branches: [master]
+    branches: [ master ]
   pull_request:
-    branches: [master]
+    branches: [ master ]
   workflow_dispatch:
 
 jobs:
-
   lint:
     name: Code Inspection and Formatting
     runs-on: ubuntu-latest
-
     permissions:
       contents: write
     steps:
@@ -28,58 +26,18 @@ jobs:
         run: dotnet tool install -g dotnet-format
 
       - name: Apply code formatting
-
         run: dotnet format ./ChatSystem.sln --verbosity diagnostic
 
       - name: Commit and push formatting changes
-
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "style: Apply automatic code formatting"
-
           file_pattern: "**/*.cs"
 
   test:
-    name: Unit & Integration Testing
+    name: Test Services
     runs-on: ubuntu-latest
     needs: lint
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup .NET SDK
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '9.x'
-
-      - name: Restore dependencies
-        run: dotnet restore ./ChatSystem.sln
-
-      - name: Build solution
-        run: dotnet build ./ChatSystem.sln --no-restore --configuration Release
-
-      - name: Run unit tests with coverage
-
-        run: dotnet test ./ChatSystem.sln --no-build --configuration Release --collect:"XPlat Code Coverage" --logger "trx;LogFileName=test-results.trx"
-
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results
-          path: "**/TestResults/*.trx"
-
-      - name: Upload coverage report
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report
-          path: "**/TestResults/**/coverage.cobertura.xml"
-
-  verify-services-run:
-    name: Verify Services with Docker Compose
-    runs-on: ubuntu-latest
-    needs: test
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -92,12 +50,39 @@ jobs:
           docker-compose build
           docker-compose up -d
 
+      - name: Wait for services to be healthy
+        run: sleep 15
+
       - name: Check running containers
         run: docker-compose ps
 
-      - name: View logs for troubleshooting (optional)
-        if: failure()
-        run: docker-compose logs
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.x'
+
+      - name: Restore dependencies
+        run: dotnet restore ./ChatSystem.sln
+
+      - name: Build solution
+        run: dotnet build ./ChatSystem.sln --no-restore --configuration Release
+
+      - name: Run unit tests
+        run: dotnet test ./ChatSystem.sln --no-build --configuration Release --collect:"XPlat Code Coverage" --logger "trx;LogFileName=test-results.trx"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: "**/TestResults/**/*.trx"
+
+      - name: Upload coverage report
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: "**/TestResults/**/coverage.cobertura.xml"
 
       - name: Tear down services
         if: always()
