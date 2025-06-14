@@ -10,16 +10,10 @@
     <DockerServiceName>testproj</DockerServiceName>
   </PropertyGroup>
   <ItemGroup>
-    <None Include=".env" />
     <None Include="docker-compose.override.yml">
       <DependentUpon>docker-compose.yml</DependentUpon>
     </None>
     <None Include="docker-compose.yml" />
     <None Include=".dockerignore" />
-    <None Include="migrate.bat" />
-    <None Include="README.md" />
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include=".gitignore" />
   </ItemGroup>
 </Project>

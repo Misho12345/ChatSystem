@@ -96,7 +96,7 @@ public class ConversationService(IMongoDatabase database) : IConversationService
 
         if (beforeTimestamp.HasValue)
         {
-            filter &= Builders<Message>.Filter.Lt(m => m.Timestamp, beforeTimestamp.Value);
+            filter &= Builders<Message>.Filter.Lte(m => m.Timestamp, beforeTimestamp.Value);
         }
 
         return await _messages.Find(filter)
