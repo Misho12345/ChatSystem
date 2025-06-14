@@ -2,16 +2,19 @@
 
 on:
   push:
-    branches: [ master ]
+    branches: [master]
   pull_request:
-    branches: [ master ]
+    branches: [master]
   workflow_dispatch:
 
 jobs:
 
   lint:
-    name: Code Inspection
+    name: Code Inspection and Formatting
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -24,9 +27,17 @@ jobs:
       - name: Install .NET linters
         run: dotnet tool install -g dotnet-format
 
-      - name: Run linter
+      - name: Apply code formatting
 
-        run: dotnet format ./ChatSystem.sln --verify-no-changes --verbosity diagnostic
+        run: dotnet format ./ChatSystem.sln --verbosity diagnostic
+
+      - name: Commit and push formatting changes
+
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "style: Apply automatic code formatting"
+
+          file_pattern: "**/*.cs"
 
   test:
     name: Unit & Integration Testing
