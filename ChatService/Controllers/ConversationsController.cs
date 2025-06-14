@@ -51,11 +51,11 @@ public class ConversationsController(IConversationService conversationService, I
         // or the client is responsible for mapping SenderId to a display name/tag.
         // The DTO here will just pass what the service provides.
         var messageDtos = messages.Select(m => new MessageDto(
-            m.Id,
-            m.ConversationId,
+            m.Id!,
+            m.ConversationId!,
             m.SenderId,
             "Tag", // Placeholder: This tag should ideally come from a lookup or be passed by the client/hub
-            m.Text,
+            m.Text!,
             m.Timestamp,
             m.MessageType
         )).OrderBy(m => m.Timestamp).ToList();
@@ -95,7 +95,7 @@ public class ConversationsController(IConversationService conversationService, I
         }
 
         var conversationDto = new ConversationDto(
-            conversation.Id,
+            conversation.Id!,
             conversation.ParticipantIds,
             conversation.LastMessage != null
                 ? new LastMessageDto(
@@ -122,7 +122,7 @@ public class ConversationsController(IConversationService conversationService, I
         var conversations = await conversationService.GetUserConversationsAsync(userId);
         var dtos = conversations
             .Select(c => new ConversationDto(
-                c.Id,
+                c.Id!,
                 c.ParticipantIds,
                 c.LastMessage != null
                     ? new LastMessageDto(

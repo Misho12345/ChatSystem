@@ -67,7 +67,7 @@ public class ConversationService(IMongoDatabase database) : IConversationService
 
         var embeddedMessage = new EmbeddedMessage
         {
-            MessageId = message.Id,
+            MessageId = message.Id!,
             SenderId = senderId,
             Text = text,
             Timestamp = message.Timestamp

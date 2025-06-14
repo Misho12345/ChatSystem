@@ -18,11 +18,11 @@ public sealed class Friendship
 
     public Guid RequesterId { get; set; }
 
-    public User Requester { get; set; }
+    public User? Requester { get; set; }
 
 
     public Guid AddresseeId { get; set; }
-    [ForeignKey("AddresseeId")] public User Addressee { get; set; }
+    [ForeignKey("AddresseeId")] public User? Addressee { get; set; }
 
 
     public FriendshipStatus Status { get; set; }

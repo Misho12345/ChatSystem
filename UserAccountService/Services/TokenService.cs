@@ -92,7 +92,7 @@ public class TokenService(UserAccountDbContext context, IOptions<JwtSettings> jw
         storedToken.Used = true;
         context.RefreshTokens.Update(storedToken);
 
-        var (newAccessToken, newGeneratedRefreshToken) = GenerateTokens(storedToken.User);
+        var (newAccessToken, newGeneratedRefreshToken) = GenerateTokens(storedToken.User!);
 
         logger.LogInformation(
             "Successfully refreshed tokens for User ID: {UserId} using old refresh token: {OldRefreshToken}",

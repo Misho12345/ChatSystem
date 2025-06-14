@@ -1,0 +1,112 @@
+﻿name: Build and Test
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  lint:
+    name: Code Inspection and Formatting
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.x'
+
+      - name: Install .NET linters
+        run: dotnet tool install -g dotnet-format
+
+      - name: Apply code formatting
+        run: dotnet format ./ChatSystem.sln --verbosity diagnostic
+
+      - name: Commit and push formatting changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "style: Apply automatic code formatting"
+          file_pattern: "**/*.cs"
+
+  test:
+    name: Test Services
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create .env file
+        run: |
+          echo "POSTGRES_USER=my_pg_user" >> .env
+          echo "POSTGRES_PASSWORD=my_pg_password" >> .env
+          echo "POSTGRES_DB=my_pg_db" >> .env
+          echo "MONGO_USER=my_mongo_admin" >> .env
+          echo "MONGO_PASSWORD=my_mongo_admin_password" >> .env
+          echo "MONGO_DB=my_mongo_db" >> .env
+          echo "JWT_SECRET=this_is_a_very_long_secret_key_with_at_least_32_chars" >> .env
+
+      - name: Build and start services
+        run: |
+          docker compose build
+          docker compose up -d
+
+      - name: Check running containers
+        run: docker compose ps
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.x'
+
+      - name: Restore dependencies
+        run: dotnet restore ./ChatSystem.sln
+
+      - name: Build solution
+        run: dotnet build ./ChatSystem.sln --no-restore --configuration Release
+
+      - name: Wait for databases to be healthy
+        run: |
+          echo "Waiting for postgres_db to become healthy..."
+          until [ "$(docker inspect -f '{{.State.Health.Status}}' chatsystem-postgres_db-1 2>/dev/null)" == "healthy" ]; do
+              sleep 2
+          done
+          echo "postgres_db is healthy!"
+
+          echo "Waiting for mongo_db to become healthy..."
+          until [ "$(docker inspect -f '{{.State.Health.Status}}' chatsystem-mongo_db-1 2>/dev/null)" == "healthy" ]; do
+              sleep 2
+          done
+          echo "mongo_db is healthy!"
+
+      - name: Run unit tests
+        env:
+          MONGO_CONNECTION_STRING: "mongodb://my_mongo_admin:my_mongo_admin_password@localhost:27017/?authSource=admin"
+        run: dotnet test ./ChatSystem.sln --no-build --configuration Release --collect:"XPlat Code Coverage" --logger "trx;LogFileName=test-results.trx"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: "**/TestResults/**/*.trx"
+
+      - name: Upload coverage report
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: "**/TestResults/**/coverage.cobertura.xml"
+
+      - name: Tear down services
+        if: always()
+        run: docker compose down
