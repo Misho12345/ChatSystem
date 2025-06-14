@@ -75,5 +75,6 @@
             return request(url);
         },
         initiateConversation: (recipientId) => request(`${CHAT_SERVICE_BASE_URL}/conversations/initiate`, 'POST', {recipientId}),
+        markConversationAsRead: (conversationId) => request(`${CHAT_SERVICE_BASE_URL}/conversations/${conversationId}/markasread`, 'POST'),
     };
 })();

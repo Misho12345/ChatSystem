@@ -2,6 +2,17 @@
     let oldestMessageTimestamp = null;
     let isLoadingMessages = false;
 
+    function createSeparatorElement() {
+        const separator = document.createElement('div');
+        separator.className = 'separator-container';
+        separator.innerHTML = `
+            <div class="separator-line"></div>
+            <span class="separator-text">New Messages</span>
+            <div class="separator-line"></div>
+        `;
+        return separator;
+    }
+
     function addFriendRequest(req) {
         const listElement = document.getElementById('friendRequestsList');
         const countElement = document.getElementById('friendRequestCount');
@@ -24,28 +35,60 @@
         countElement.textContent = parseInt(countElement.textContent, 10) + 1;
     }
 
-    function renderFriendsList(friends) {
+    function renderConversationsList(conversations, friends) {
         const listElement = document.getElementById('friendsList');
         const countElement = document.getElementById('friendsCount');
         listElement.innerHTML = '';
+
         if (friends && friends.length > 0) {
-            friends.forEach(friend => {
+            const conversationsMap = new Map(conversations.map(conv => {
+                const otherParticipantId = conv.participantIds.find(id => id !== Auth.getCurrentUserId());
+                return [otherParticipantId, conv];
+            }));
+
+            friends.sort((a, b) => {
+                const convA = conversationsMap.get(a.id);
+                const convB = conversationsMap.get(b.id);
+                const timeA = convA ? new Date(convA.updatedAt).getTime() : 0;
+                const timeB = convB ? new Date(b.updatedAt).getTime() : 0;
+                return timeB - timeA;
+            });
+
+            friends.forEach(friendInfo => {
+                const conv = conversationsMap.get(friendInfo.id);
+
                 const li = document.createElement('li');
                 li.className = 'list-group-item list-group-item-action';
                 li.style.cursor = 'pointer';
-                li.dataset.friendId = friend.id;
-                li.dataset.friendName = friend.name;
-                li.dataset.friendTag = friend.tag;
+
+                li.dataset.conversationId = conv?.id ?? 'null';
+                li.dataset.friendId = friendInfo.id;
+                li.dataset.friendName = friendInfo.name;
+                li.dataset.friendTag = friendInfo.tag;
+
+                const unreadCount = conv?.unreadCount ?? 0;
+                const lastMessageText = escapeHtml(conv?.lastMessage?.text ?? 'Click to start a conversation.');
+
+                li.dataset.unreadCount = unreadCount;
+
+                const unreadBadge = unreadCount > 0
+                    ? `<span class="badge bg-danger rounded-pill ms-2 unread-badge">${unreadCount}</span>`
+                    : '';
+
                 li.innerHTML = `
-                    <div>
-                        <strong>${friend.name}</strong> (${friend.tag})
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>${friendInfo.name}</strong> (${friendInfo.tag})
+                            <div class="text-muted small last-message">${lastMessageText}</div>
                         </div>
+                        ${unreadBadge}
+                    </div>
                 `;
                 listElement.appendChild(li);
             });
             countElement.textContent = friends.length;
         } else {
-            listElement.innerHTML = '<li class="list-group-item">No friends yet.</li>';
+            listElement.innerHTML = '<li class="list-group-item">No friends yet. Find users to add!</li>';
             countElement.textContent = 0;
         }
     }
@@ -111,14 +154,27 @@
         return div;
     }
 
-    function renderMessages(messages, currentUserId) {
+    function renderMessages(messages, currentUserId, unreadCount = 0) {
         const panel = document.getElementById('messagesPanel');
         panel.innerHTML = '';
+
         if (messages && messages.length > 0) {
-            messages.forEach(msg => {
+            messages.slice().reverse().forEach(msg => {
                 panel.appendChild(createMessageElement(msg, currentUserId));
             });
-            oldestMessageTimestamp = messages[0].timestamp;
+
+            if (unreadCount > 0) {
+                const messageElements = panel.querySelectorAll('.message-bubble');
+                if (unreadCount <= messageElements.length) {
+                    const firstUnreadNode = messageElements[messageElements.length - unreadCount];
+                    if (firstUnreadNode) {
+                        panel.insertBefore(createSeparatorElement(), firstUnreadNode);
+                    }
+                } else {
+                    panel.prepend(createSeparatorElement());
+                }
+            }
+            oldestMessageTimestamp = messages[messages.length - 1].timestamp;
         } else {
             panel.innerHTML = '<p class="text-center text-muted">No messages yet. Start the conversation!</p>';
             oldestMessageTimestamp = null;
@@ -145,7 +201,7 @@
             messages.slice().reverse().forEach(msg => {
                 panel.insertBefore(createMessageElement(msg, currentUserId), panel.firstChild);
             });
-            oldestMessageTimestamp = messages[0].timestamp;
+            oldestMessageTimestamp = messages[messages.length - 1].timestamp;
 
             panel.scrollTop = originalScrollTop + (panel.scrollHeight - originalScrollHeight);
         }
@@ -159,20 +215,17 @@
 
     async function handleScrollForMessages() {
         const panel = document.getElementById('messagesPanel');
-        if (panel.scrollTop === 0 && !isLoadingMessages && currentConversationId && oldestMessageTimestamp) {
+        if (panel.scrollTop === 0 && !isLoadingMessages && App.getCurrentConversationId() && oldestMessageTimestamp) {
             isLoadingMessages = true;
-            console.log(`Fetching messages before ${oldestMessageTimestamp} for ${currentConversationId}`);
             try {
-                const olderMessages = await Api.getMessagesForConversation(currentConversationId, oldestMessageTimestamp, 20);
+                const olderMessages = await Api.getMessagesForConversation(App.getCurrentConversationId(), oldestMessageTimestamp, 20);
                 if (olderMessages && olderMessages.length > 0) {
                     prependMessages(olderMessages, Auth.getCurrentUserId());
                 } else {
-                    console.log('No more older messages to load.');
                     oldestMessageTimestamp = null;
                 }
             } catch (error) {
                 console.error('Failed to load older messages:', error);
-                if (error.status === 401) Auth.logout();
             } finally {
                 isLoadingMessages = false;
             }
@@ -180,6 +233,9 @@
     }
 
     function escapeHtml(unsafe) {
+        if (typeof unsafe !== 'string') {
+            return '';
+        }
         return unsafe
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
@@ -188,16 +244,51 @@
             .replace(/'/g, "&#039;");
     }
 
-    function setActiveFriend(friendId) {
+    function setActiveFriend(conversationId) {
         document.querySelectorAll('#friendsList .list-group-item').forEach(item => {
             item.classList.remove('active');
         });
-        const activeItem = document.querySelector(`#friendsList .list-group-item[data-friend-id="${friendId}"]`);
+        const activeItem = document.querySelector(`#friendsList .list-group-item[data-conversation-id="${conversationId}"]`);
         if (activeItem) {
             activeItem.classList.add('active');
         }
         oldestMessageTimestamp = null;
         isLoadingMessages = false;
+    }
+
+    function updateConversationListOnNewMessage(messageDto, isSender, isChatOpen) {
+        const listElement = document.getElementById('friendsList');
+        let conversationElement = listElement.querySelector(`[data-conversation-id="${messageDto.conversationId}"]`);
+
+        if (!conversationElement && !isSender) {
+            const friendId = messageDto.senderId;
+            conversationElement = listElement.querySelector(`[data-friend-id="${friendId}"]`);
+        }
+
+        if (conversationElement) {
+            if (conversationElement.dataset.conversationId === 'null') {
+                conversationElement.dataset.conversationId = messageDto.conversationId;
+            }
+
+            const lastMessageEl = conversationElement.querySelector('.last-message');
+            const lastMessageText = isSender ? `You: ${messageDto.text}` : messageDto.text;
+            if (lastMessageEl) lastMessageEl.textContent = lastMessageText;
+
+            listElement.prepend(conversationElement);
+
+            if (!isSender && !isChatOpen) {
+                let unreadCount = parseInt(conversationElement.dataset.unreadCount, 10) + 1;
+                conversationElement.dataset.unreadCount = unreadCount;
+
+                let badge = conversationElement.querySelector('.unread-badge');
+                if (!badge) {
+                    badge = document.createElement('span');
+                    badge.className = 'badge bg-danger rounded-pill ms-2 unread-badge';
+                    conversationElement.querySelector('.d-flex').appendChild(badge);
+                }
+                badge.textContent = unreadCount;
+            }
+        }
     }
 
     async function displayCurrentUser() {
@@ -226,7 +317,7 @@
 
 
     return {
-        renderFriendsList,
+        renderConversationsList,
         renderFriendRequests,
         renderSearchResults,
         renderMessages,
@@ -236,6 +327,7 @@
         handleScrollForMessages,
         setActiveFriend,
         displayCurrentUser,
-        addFriendRequest
+        addFriendRequest,
+        updateConversationListOnNewMessage
     };
 })();

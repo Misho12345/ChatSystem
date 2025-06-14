@@ -96,7 +96,7 @@ public class ConversationService(IMongoDatabase database) : IConversationService
 
         if (beforeTimestamp.HasValue)
         {
-            filter &= Builders<Message>.Filter.Lte(m => m.Timestamp, beforeTimestamp.Value);
+            filter &= Builders<Message>.Filter.Lt(m => m.Timestamp, beforeTimestamp.Value);
         }
 
         return await _messages.Find(filter)
@@ -115,9 +115,30 @@ public class ConversationService(IMongoDatabase database) : IConversationService
 
     public async Task<List<Conversation>> GetUserConversationsAsync(Guid userId)
     {
+        var userIdStr = userId.ToString();
         var filter = Builders<Conversation>.Filter.AnyEq(c => c.ParticipantIds, userId);
-        return await _conversations.Find(filter)
+        var conversations = await _conversations.Find(filter)
             .Sort(Builders<Conversation>.Sort.Descending(c => c.UpdatedAt))
             .ToListAsync();
+
+        foreach (var conv in conversations)
+        {
+            var lastReadTimestamp = conv.LastReadTimestamps.GetValueOrDefault(userIdStr, DateTime.MinValue);
+            var unreadFilter = Builders<Message>.Filter.And(
+                Builders<Message>.Filter.Eq(m => m.ConversationId, conv.Id),
+                Builders<Message>.Filter.Gt(m => m.Timestamp, lastReadTimestamp),
+                Builders<Message>.Filter.Ne(m => m.SenderId, userId)
+            );
+            conv.UnreadCount = (int)await _messages.CountDocumentsAsync(unreadFilter);
+        }
+
+        return conversations;
+    }
+
+    public async Task MarkAsReadAsync(string conversationId, Guid userId)
+    {
+        var filter = Builders<Conversation>.Filter.Eq(c => c.Id, conversationId);
+        var update = Builders<Conversation>.Update.Set($"LastReadTimestamps.{userId}", DateTime.UtcNow);
+        await _conversations.UpdateOneAsync(filter, update);
     }
 }

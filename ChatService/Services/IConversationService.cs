@@ -16,4 +16,6 @@ public interface IConversationService
 
     Task<List<Conversation>> GetUserConversationsAsync(Guid userId);
     Task EnsureIndexesAsync();
+    
+    Task MarkAsReadAsync(string conversationId, Guid userId);
 }
