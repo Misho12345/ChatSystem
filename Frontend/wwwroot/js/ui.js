@@ -50,7 +50,7 @@
                 const convA = conversationsMap.get(a.id);
                 const convB = conversationsMap.get(b.id);
                 const timeA = convA ? new Date(convA.updatedAt).getTime() : 0;
-                const timeB = convB ? new Date(b.updatedAt).getTime() : 0;
+                const timeB = convB ? new Date(convB.updatedAt).getTime() : 0;
                 return timeB - timeA;
             });
 
