@@ -4,7 +4,7 @@
 
     function startConnection(accessToken) {
         if (connection && connection.state === signalR.HubConnectionState.Connected) {
-            return;
+            return Promise.resolve(connection);
         }
 
         connection = new signalR.HubConnectionBuilder()
