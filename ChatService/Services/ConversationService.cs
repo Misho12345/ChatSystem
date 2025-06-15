@@ -126,18 +126,27 @@ public class ConversationService(IMongoDatabase database) : IConversationService
             conv => conv.LastReadTimestamps.GetValueOrDefault(userIdStr, DateTime.MinValue)
         );
 
+        if (lastReadTimestamps.Count <= 0) return conversations;
+
+        var orFilters = lastReadTimestamps.Select(kvp =>
+            Builders<Message>.Filter.And(
+                Builders<Message>.Filter.Eq(m => m.ConversationId, kvp.Key),
+                Builders<Message>.Filter.Gt(m => m.Timestamp, kvp.Value),
+                Builders<Message>.Filter.Ne(m => m.SenderId, userId)
+            )
+        );
+        var match = Builders<Message>.Filter.Or(orFilters);
+
         var unreadCounts = await _messages.Aggregate()
-            .Match(m => lastReadTimestamps.ContainsKey(m.ConversationId!) &&
-                        m.Timestamp > lastReadTimestamps[m.ConversationId!] &&
-                        m.SenderId != userId)
+            .Match(match)
             .Group(m => m.ConversationId, g => new { ConversationId = g.Key, UnreadCount = g.Count() })
             .ToListAsync();
 
-        var unreadCountMap = unreadCounts.ToDictionary(count => count.ConversationId!, count => count.UnreadCount);
+        var unreadMap = unreadCounts.ToDictionary(x => x.ConversationId!, x => x.UnreadCount);
 
         foreach (var conv in conversations)
         {
-            conv.UnreadCount = unreadCountMap!.GetValueOrDefault(conv.Id, 0);
+            conv.UnreadCount = unreadMap.GetValueOrDefault(conv.Id!, 0);
         }
 
         return conversations;
@@ -146,7 +155,7 @@ public class ConversationService(IMongoDatabase database) : IConversationService
     public async Task MarkAsReadAsync(string conversationId, Guid userId)
     {
         var filter = Builders<Conversation>.Filter.Eq(c => c.Id, conversationId);
-        var update = Builders<Conversation>.Update.Set($"LastReadTimestamps.{userId}", DateTime.UtcNow);
+        var update = Builders<Conversation>.Update.Set($"LastReadTimestamps.{userId.ToString()}", DateTime.UtcNow);
         await _conversations.UpdateOneAsync(filter, update);
     }
 }

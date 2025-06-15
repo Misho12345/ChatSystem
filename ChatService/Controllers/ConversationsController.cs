@@ -49,7 +49,7 @@ public class ConversationsController(IConversationService conversationService, I
             m.Text!,
             m.Timestamp,
             m.MessageType
-        )).OrderBy(m => m.Timestamp).ToList();
+        )).OrderByDescending(m => m.Timestamp).ToList();
 
         logger.LogInformation("Returning {Count} messages for Conversation ID: {ConversationId}", messageDtos.Count,
             conversationId);
