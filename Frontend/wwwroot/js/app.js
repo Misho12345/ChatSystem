@@ -24,7 +24,7 @@
         }
     });
 
-    document.getElementById('friendsList').addEventListener('click', handleConversationClick);
+    document.getElementById('conversationsList').addEventListener('click', handleConversationClick);
     document.getElementById('friendRequestsList').addEventListener('click', handleFriendRequestAction);
     document.getElementById('searchResults').addEventListener('click', handleSearchResultClick);
 
@@ -86,7 +86,7 @@ async function handleConversationClick(event) {
         const unreadCount = parseInt(target.dataset.unreadCount, 10);
         let conversationId = target.dataset.conversationId;
 
-        UI.setActiveFriend(conversationId);
+        UI.setActiveConversation(conversationId);
         document.getElementById('chatHeader').textContent = `Chat with ${friendName} (${friendTag})`;
         document.getElementById('messagesPanel').innerHTML = '';
         document.getElementById('messageInputArea').classList.remove('d-none');

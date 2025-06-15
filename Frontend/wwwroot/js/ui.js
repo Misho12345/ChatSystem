@@ -36,7 +36,7 @@
     }
 
     function renderConversationsList(conversations, friends) {
-        const listElement = document.getElementById('friendsList');
+        const listElement = document.getElementById('conversationsList');
         const countElement = document.getElementById('friendsCount');
         listElement.innerHTML = '';
 
@@ -245,10 +245,10 @@
     }
 
     function setActiveConversation(conversationId) {
-        document.querySelectorAll('#friendsList .list-group-item').forEach(item => {
+        document.querySelectorAll('#conversationsList .list-group-item').forEach(item => {
             item.classList.remove('active');
         });
-        const activeItem = document.querySelector(`#friendsList .list-group-item[data-conversation-id="${conversationId}"]`);
+        const activeItem = document.querySelector(`#conversationsList .list-group-item[data-conversation-id="${conversationId}"]`);
         if (activeItem) {
             activeItem.classList.add('active');
         }
@@ -257,7 +257,7 @@
     }
 
     function updateConversationListOnNewMessage(messageDto, isSender, isChatOpen) {
-        const listElement = document.getElementById('friendsList');
+        const listElement = document.getElementById('conversationsList');
         let conversationElement = listElement.querySelector(`[data-conversation-id="${messageDto.conversationId}"]`);
 
         if (!conversationElement && !isSender) {
@@ -325,7 +325,7 @@
         prependMessages,
         scrollToBottom,
         handleScrollForMessages,
-        setActiveFriend: setActiveConversation,
+        setActiveConversation,
         displayCurrentUser,
         addFriendRequest,
         updateConversationListOnNewMessage

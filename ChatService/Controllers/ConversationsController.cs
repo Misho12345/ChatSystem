@@ -49,7 +49,7 @@ public class ConversationsController(IConversationService conversationService, I
             m.Text!,
             m.Timestamp,
             m.MessageType
-        )).ToList();
+        )).OrderBy(m => m.Timestamp).ToList();
 
         logger.LogInformation("Returning {Count} messages for Conversation ID: {ConversationId}", messageDtos.Count,
             conversationId);
@@ -132,7 +132,7 @@ public class ConversationsController(IConversationService conversationService, I
         return Ok(dtos);
     }
     
-    [HttpPost("{conversationId}/markasread")]
+    [HttpPost("{conversationId}/mark-as-read")]
     public async Task<IActionResult> MarkConversationAsRead(string conversationId)
     {
         var userId = GetUserId();
