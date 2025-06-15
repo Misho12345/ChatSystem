@@ -121,15 +121,23 @@ public class ConversationService(IMongoDatabase database) : IConversationService
             .Sort(Builders<Conversation>.Sort.Descending(c => c.UpdatedAt))
             .ToListAsync();
 
+        var lastReadTimestamps = conversations.ToDictionary(
+            conv => conv.Id,
+            conv => conv.LastReadTimestamps.GetValueOrDefault(userIdStr, DateTime.MinValue)
+        );
+
+        var unreadCounts = await _messages.Aggregate()
+            .Match(m => lastReadTimestamps.ContainsKey(m.ConversationId) &&
+                        m.Timestamp > lastReadTimestamps[m.ConversationId] &&
+                        m.SenderId != userId)
+            .Group(m => m.ConversationId, g => new { ConversationId = g.Key, UnreadCount = g.Count() })
+            .ToListAsync();
+
+        var unreadCountMap = unreadCounts.ToDictionary(uc => uc.ConversationId, uc => uc.UnreadCount);
+
         foreach (var conv in conversations)
         {
-            var lastReadTimestamp = conv.LastReadTimestamps.GetValueOrDefault(userIdStr, DateTime.MinValue);
-            var unreadFilter = Builders<Message>.Filter.And(
-                Builders<Message>.Filter.Eq(m => m.ConversationId, conv.Id),
-                Builders<Message>.Filter.Gt(m => m.Timestamp, lastReadTimestamp),
-                Builders<Message>.Filter.Ne(m => m.SenderId, userId)
-            );
-            conv.UnreadCount = (int)await _messages.CountDocumentsAsync(unreadFilter);
+            conv.UnreadCount = unreadCountMap.GetValueOrDefault(conv.Id, 0);
         }
 
         return conversations;
