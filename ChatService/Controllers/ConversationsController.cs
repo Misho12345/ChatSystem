@@ -40,25 +40,16 @@ public class ConversationsController(IConversationService conversationService, I
             conversationId, userId, beforeTimestamp, limit);
 
         var messages = await conversationService.GetMessagesAsync(conversationId, userId, beforeTimestamp, limit);
-
-        // Map to DTOs. MessageDto requires SenderTag.
-        // This is a common challenge in microservices. The ChatService might not know the tag.
-        // Options:
-        // 1. Client resolves SenderId to SenderTag using its friend list or by querying UserAccountService.
-        // 2. ChatService calls UserAccountService (can add latency, complexity).
-        // 3. UserAccountService publishes user updates (e.g., tag changes) via events, and ChatService caches/stores relevant user info.
-        // For this MVP, we'll assume the MessageDto constructor in ChatService might get the tag from claims when message is created,
-        // or the client is responsible for mapping SenderId to a display name/tag.
-        // The DTO here will just pass what the service provides.
+        
         var messageDtos = messages.Select(m => new MessageDto(
             m.Id!,
             m.ConversationId!,
             m.SenderId,
-            "Tag", // Placeholder: This tag should ideally come from a lookup or be passed by the client/hub
+            "Tag",
             m.Text!,
             m.Timestamp,
             m.MessageType
-        )).OrderBy(m => m.Timestamp).ToList();
+        )).OrderByDescending(m => m.Timestamp).ToList();
 
         logger.LogInformation("Returning {Count} messages for Conversation ID: {ConversationId}", messageDtos.Count,
             conversationId);
@@ -101,12 +92,13 @@ public class ConversationsController(IConversationService conversationService, I
                 ? new LastMessageDto(
                     conversation.LastMessage.MessageId,
                     conversation.LastMessage.SenderId,
-                    conversation.LastMessage.SenderId.ToString(), // Placeholder for LastMessage.SenderTag
+                    conversation.LastMessage.SenderId.ToString(),
                     conversation.LastMessage.Text,
                     conversation.LastMessage.Timestamp)
                 : null,
             conversation.CreatedAt,
-            conversation.UpdatedAt
+            conversation.UpdatedAt,
+            0
         );
 
         logger.LogInformation(
@@ -133,9 +125,19 @@ public class ConversationsController(IConversationService conversationService, I
                         c.LastMessage.Timestamp)
                     : null,
                 c.CreatedAt,
-                c.UpdatedAt))
+                c.UpdatedAt,
+                c.UnreadCount))
             .ToList();
 
         return Ok(dtos);
+    }
+    
+    [HttpPost("{conversationId}/mark-as-read")]
+    public async Task<IActionResult> MarkConversationAsRead(string conversationId)
+    {
+        var userId = GetUserId();
+        await conversationService.MarkAsReadAsync(conversationId, userId);
+        logger.LogInformation("User {UserId} marked conversation {ConversationId} as read.", userId, conversationId);
+        return NoContent();
     }
 }

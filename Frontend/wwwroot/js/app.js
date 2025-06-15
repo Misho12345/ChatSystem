@@ -18,29 +18,32 @@
     });
     document.getElementById('sendMessageButton').addEventListener('click', handleSendMessage);
     document.getElementById('messageInput').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') handleSendMessage();
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSendMessage();
+        }
     });
 
-    document.getElementById('friendsList').addEventListener('click', handleFriendListClick);
+    document.getElementById('conversationsList').addEventListener('click', handleConversationClick);
     document.getElementById('friendRequestsList').addEventListener('click', handleFriendRequestAction);
     document.getElementById('searchResults').addEventListener('click', handleSearchResultClick);
 
     const messagesPanel = document.getElementById('messagesPanel');
     messagesPanel.addEventListener('scroll', UI.handleScrollForMessages);
-
 });
 
 let currentConversationId = null;
-let currentRecipient = null;
+let friendsData = [];
 
 async function loadInitialData() {
     try {
-        const [friends, requests] = await Promise.all([
+        const [conversations, friends, requests] = await Promise.all([
+            Api.getUserConversations(),
             Api.getFriends(),
             Api.getPendingFriendRequests()
         ]);
-
-        UI.renderFriendsList(friends);
+        friendsData = friends;
+        UI.renderConversationsList(conversations, friendsData);
         UI.renderFriendRequests(requests);
     } catch (error) {
         console.error('Failed to load initial data:', error);
@@ -51,7 +54,7 @@ async function loadInitialData() {
 async function handleSearch() {
     const query = document.getElementById('searchInput').value;
     if (!query.trim()) {
-        UI.renderSearchResults();
+        UI.renderSearchResults([]);
         return;
     }
     try {
@@ -59,48 +62,60 @@ async function handleSearch() {
         UI.renderSearchResults(results);
     } catch (error) {
         console.error('Search failed:', error);
-        if (error.status === 401) Auth.logout();
     }
 }
 
 async function handleSendMessage() {
     const messageText = document.getElementById('messageInput').value;
     if (messageText.trim() && currentConversationId) {
-        await ChatClient.sendMessage(currentConversationId, messageText);
-        document.getElementById('messageInput').value = '';
+        try {
+            await ChatClient.sendMessage(currentConversationId, messageText);
+            document.getElementById('messageInput').value = '';
+        } catch (error) {
+            console.error("Failed to send message:", error);
+        }
     }
 }
 
-async function handleFriendListClick(event) {
-    const target = event.target.closest('.list-group-item[data-friend-id]');
+async function handleConversationClick(event) {
+    const target = event.target.closest('.list-group-item[data-conversation-id]');
     if (target) {
         const friendId = target.dataset.friendId;
         const friendName = target.dataset.friendName;
         const friendTag = target.dataset.friendTag;
+        const unreadCount = parseInt(target.dataset.unreadCount, 10);
+        let conversationId = target.dataset.conversationId;
 
-        currentRecipient = {id: friendId, name: friendName, tag: friendTag};
-        UI.setActiveFriend(friendId);
-
+        UI.setActiveConversation(conversationId);
         document.getElementById('chatHeader').textContent = `Chat with ${friendName} (${friendTag})`;
         document.getElementById('messagesPanel').innerHTML = '';
         document.getElementById('messageInputArea').classList.remove('d-none');
-        document.getElementById('noChatSelected').classList.add('d-none');
-
 
         try {
-            const conversation = await Api.initiateConversation(friendId);
-            currentConversationId = conversation.id;
-            await ChatClient.joinConversation(currentConversationId);
+            if (conversationId === "null" || !conversationId) {
+                const conversation = await Api.initiateConversation(friendId);
+                conversationId = conversation.id;
+                target.dataset.conversationId = conversationId;
+            }
 
-            const messages = await Api.getMessagesForConversation(currentConversationId, null, 20);
-            UI.renderMessages(messages, Auth.getCurrentUserId());
+            currentConversationId = conversationId;
+
+            if (unreadCount > 0) {
+                await Api.markConversationAsRead(currentConversationId);
+                target.dataset.unreadCount = '0';
+                target.querySelector('.unread-badge')?.remove();
+            }
+
+            const messages = await Api.getMessagesForConversation(currentConversationId, null, 50);
+            UI.renderMessages(messages, Auth.getCurrentUserId(), unreadCount);
             UI.scrollToBottom();
+
         } catch (error) {
             console.error('Failed to start chat:', error);
-            if (error.status === 401) Auth.logout();
         }
     }
 }
+
 
 async function handleFriendRequestAction(event) {
     const button = event.target.closest('button[data-request-id]');
@@ -115,9 +130,9 @@ async function handleFriendRequestAction(event) {
         } else if (action === 'decline') {
             await Api.declineFriendRequest(requestId);
         }
+        await loadInitialData();
     } catch (error) {
         console.error(`Failed to ${action} friend request:`, error);
-        if (error.status === 401) Auth.logout();
     }
 }
 
@@ -128,15 +143,15 @@ async function handleSearchResultClick(event) {
     const targetUserId = button.dataset.userId;
     try {
         await Api.sendFriendRequest(targetUserId);
-        alert('Friend request sent!');
+        button.textContent = 'Sent';
+        button.disabled = true;
     } catch (error) {
         console.error('Failed to send friend request:', error);
         alert(error.message || 'Failed to send friend request.');
-        if (error.status === 401) Auth.logout();
     }
 }
 
-App = {
+window.App = {
     getCurrentConversationId: () => currentConversationId,
-    getCurrentRecipient: () => currentRecipient
+    loadInitialData,
 };

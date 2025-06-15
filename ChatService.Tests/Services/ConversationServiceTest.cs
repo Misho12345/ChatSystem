@@ -93,7 +93,7 @@ public class ConversationServiceTest : IDisposable
         Assert.Equal(3, all.Count);
         Assert.Equal("third", all[0].Text);
 
-        var before = all[1].Timestamp;
+        var before = all[0].Timestamp;
         var limited = await _service.GetMessagesAsync(conv.Id, u1, before, 1);
         Assert.Single(limited);
         Assert.Equal("second", limited[0].Text);

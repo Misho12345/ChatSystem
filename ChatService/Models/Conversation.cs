@@ -14,6 +14,11 @@ public class Conversation
 
     public EmbeddedMessage? LastMessage { get; set; }
 
+    public Dictionary<string, DateTime> LastReadTimestamps { get; set; } = new();
+
+    [BsonIgnore]
+    public int UnreadCount { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
