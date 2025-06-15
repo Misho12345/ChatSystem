@@ -122,22 +122,22 @@ public class ConversationService(IMongoDatabase database) : IConversationService
             .ToListAsync();
 
         var lastReadTimestamps = conversations.ToDictionary(
-            conv => conv.Id,
+            conv => conv.Id!,
             conv => conv.LastReadTimestamps.GetValueOrDefault(userIdStr, DateTime.MinValue)
         );
 
         var unreadCounts = await _messages.Aggregate()
-            .Match(m => lastReadTimestamps.ContainsKey(m.ConversationId) &&
-                        m.Timestamp > lastReadTimestamps[m.ConversationId] &&
+            .Match(m => lastReadTimestamps.ContainsKey(m.ConversationId!) &&
+                        m.Timestamp > lastReadTimestamps[m.ConversationId!] &&
                         m.SenderId != userId)
             .Group(m => m.ConversationId, g => new { ConversationId = g.Key, UnreadCount = g.Count() })
             .ToListAsync();
 
-        var unreadCountMap = unreadCounts.ToDictionary(uc => uc.ConversationId, uc => uc.UnreadCount);
+        var unreadCountMap = unreadCounts.ToDictionary(count => count.ConversationId!, count => count.UnreadCount);
 
         foreach (var conv in conversations)
         {
-            conv.UnreadCount = unreadCountMap.GetValueOrDefault(conv.Id, 0);
+            conv.UnreadCount = unreadCountMap!.GetValueOrDefault(conv.Id, 0);
         }
 
         return conversations;
