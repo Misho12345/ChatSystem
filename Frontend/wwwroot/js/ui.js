@@ -244,7 +244,7 @@
             .replace(/'/g, "&#039;");
     }
 
-    function setActiveFriend(conversationId) {
+    function setActiveConversation(conversationId) {
         document.querySelectorAll('#friendsList .list-group-item').forEach(item => {
             item.classList.remove('active');
         });
@@ -325,7 +325,7 @@
         prependMessages,
         scrollToBottom,
         handleScrollForMessages,
-        setActiveFriend,
+        setActiveFriend: setActiveConversation,
         displayCurrentUser,
         addFriendRequest,
         updateConversationListOnNewMessage

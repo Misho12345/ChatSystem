@@ -132,7 +132,6 @@ public class ConversationsController(IConversationService conversationService, I
         return Ok(dtos);
     }
     
-    // New endpoint to mark conversation as read
     [HttpPost("{conversationId}/markasread")]
     public async Task<IActionResult> MarkConversationAsRead(string conversationId)
     {
