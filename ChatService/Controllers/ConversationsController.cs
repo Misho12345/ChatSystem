@@ -6,12 +6,21 @@ using System.Security.Claims;
 
 namespace ChatService.Controllers;
 
+/// <summary>
+/// Controller for managing conversations and related operations.
+/// Requires authorization for all endpoints.
+/// </summary>
 [Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class ConversationsController(IConversationService conversationService, ILogger<ConversationsController> logger)
     : ControllerBase
 {
+    /// <summary>
+    /// Retrieves the user ID from the token claims.
+    /// </summary>
+    /// <returns>The user ID as a <see cref="Guid"/>.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if the user ID is not found in the token claims.</exception>
     private Guid GetUserId()
     {
         var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -24,13 +33,25 @@ public class ConversationsController(IConversationService conversationService, I
         throw new InvalidOperationException("User ID not found in token.");
     }
 
+    /// <summary>
+    /// Retrieves the user tag from the token claims.
+    /// </summary>
+    /// <returns>The user tag as a <see cref="string"/>. Defaults to "UnknownUser" if not found.</returns>
     private string GetUserTag()
     {
         return User.FindFirstValue("tag") ?? "UnknownUser";
     }
 
-
-    [HttpGet("{conversationId}/messages")] // GET /api/conversations/{conversationId}/messages?beforeTimestamp=...&limit=...
+    /// <summary>
+    /// Retrieves messages for a specific conversation.
+    /// </summary>
+    /// <param name="conversationId">The ID of the conversation.</param>
+    /// <param name="beforeTimestamp">Optional timestamp to fetch messages before.</param>
+    /// <param name="limit">The maximum number of messages to retrieve. Defaults to 20.</param>
+    /// <returns>
+    /// An <see cref="IActionResult"/> containing the list of messages in the conversation.
+    /// </returns>
+    [HttpGet("{conversationId}/messages")]
     public async Task<IActionResult> GetMessages(string conversationId, [FromQuery] DateTime? beforeTimestamp,
         [FromQuery] int limit = 20)
     {
@@ -40,7 +61,7 @@ public class ConversationsController(IConversationService conversationService, I
             conversationId, userId, beforeTimestamp, limit);
 
         var messages = await conversationService.GetMessagesAsync(conversationId, userId, beforeTimestamp, limit);
-        
+
         var messageDtos = messages.Select(m => new MessageDto(
             m.Id!,
             m.ConversationId!,
@@ -56,7 +77,14 @@ public class ConversationsController(IConversationService conversationService, I
         return Ok(messageDtos);
     }
 
-    [HttpPost("initiate")] // POST /api/conversations/initiate
+    /// <summary>
+    /// Initiates a new conversation or retrieves an existing one.
+    /// </summary>
+    /// <param name="request">The request containing the recipient ID.</param>
+    /// <returns>
+    /// An <see cref="IActionResult"/> containing the conversation details or an error response.
+    /// </returns>
+    [HttpPost("initiate")]
     public async Task<IActionResult> InitiateConversation(InitiateConversationRequestDto request)
     {
         if (!ModelState.IsValid)
@@ -107,6 +135,12 @@ public class ConversationsController(IConversationService conversationService, I
         return Ok(conversationDto);
     }
 
+    /// <summary>
+    /// Retrieves all conversations for the currently authenticated user.
+    /// </summary>
+    /// <returns>
+    /// An <see cref="IActionResult"/> containing the list of conversations.
+    /// </returns>
     [HttpGet]
     public async Task<IActionResult> GetConversations()
     {
@@ -131,7 +165,14 @@ public class ConversationsController(IConversationService conversationService, I
 
         return Ok(dtos);
     }
-    
+
+    /// <summary>
+    /// Marks a conversation as read for the currently authenticated user.
+    /// </summary>
+    /// <param name="conversationId">The ID of the conversation to mark as read.</param>
+    /// <returns>
+    /// A <see cref="NoContentResult"/> indicating the operation was successful.
+    /// </returns>
     [HttpPost("{conversationId}/mark-as-read")]
     public async Task<IActionResult> MarkConversationAsRead(string conversationId)
     {
