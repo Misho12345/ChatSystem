@@ -12,6 +12,7 @@ public class ChatHub(IConversationService conversationService, ILogger<ChatHub> 
     public async Task SendMessage(string conversationId, string text)
     {
         var senderId = Guid.Parse(Context.UserIdentifier!);
+
         var senderTag = Context.User!.FindFirst("tag")?.Value ?? "Unknown";
 
         var message = await conversationService.AddMessageAsync(conversationId, senderId, senderTag, text);
@@ -46,5 +47,24 @@ public class ChatHub(IConversationService conversationService, ILogger<ChatHub> 
         await Groups.AddToGroupAsync(Context.ConnectionId, conversationId);
         logger.LogInformation("Connection {ConnectionId} joined group {ConversationId}", Context.ConnectionId,
             conversationId);
+    }
+
+    public override async Task OnConnectedAsync()
+    {
+        var userId = Context.UserIdentifier;
+        if (userId != null)
+        {
+            await Groups.AddToGroupAsync(Context.ConnectionId, userId);
+            logger.LogInformation(
+                "User {UserId} connected with ConnectionId {ConnectionId} and joined their user group.", userId,
+                Context.ConnectionId);
+        }
+        else
+        {
+            logger.LogWarning("An unauthenticated user connected with ConnectionId {ConnectionId}.",
+                Context.ConnectionId);
+        }
+
+        await base.OnConnectedAsync();
     }
 }

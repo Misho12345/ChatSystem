@@ -15,6 +15,9 @@ using Xunit;
 
 namespace UserAccountService.Tests.Services;
 
+/// <summary>
+/// Unit tests for the FriendshipService class.
+/// </summary>
 public class FriendshipServiceTest : IDisposable
 {
     private readonly UserAccountDbContext _context;
@@ -25,6 +28,9 @@ public class FriendshipServiceTest : IDisposable
     private readonly User _user1;
     private readonly User _user2;
 
+    /// <summary>
+    /// Initializes the FriendshipServiceTest class and sets up mock dependencies and test data.
+    /// </summary>
     public FriendshipServiceTest()
     {
         var options = new DbContextOptionsBuilder<UserAccountDbContext>()
@@ -55,6 +61,9 @@ public class FriendshipServiceTest : IDisposable
         _context.SaveChanges();
     }
 
+    /// <summary>
+    /// Cleans up resources used by the test class.
+    /// </summary>
     public void Dispose()
     {
         _context.Database.EnsureDeleted();
@@ -62,6 +71,9 @@ public class FriendshipServiceTest : IDisposable
         GC.SuppressFinalize(this);
     }
 
+    /// <summary>
+    /// Tests that SendFriendRequestAsync creates a pending friendship and notifies the recipient when valid users are provided.
+    /// </summary>
     [Fact]
     public async Task SendFriendRequestAsync_WithValidUsers_CreatesPendingFriendshipAndNotifies()
     {
@@ -82,6 +94,9 @@ public class FriendshipServiceTest : IDisposable
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that SendFriendRequestAsync returns an error when the recipient user does not exist.
+    /// </summary>
     [Fact]
     public async Task SendFriendRequestAsync_ToNonExistentUser_ReturnsError()
     {
@@ -91,6 +106,9 @@ public class FriendshipServiceTest : IDisposable
         Assert.Equal("Recipient user not found.", result.Message);
     }
 
+    /// <summary>
+    /// Tests that SendFriendRequestAsync returns an error when attempting to send a friend request to oneself.
+    /// </summary>
     [Fact]
     public async Task SendFriendRequestAsync_ToSelf_ReturnsError()
     {
@@ -100,6 +118,9 @@ public class FriendshipServiceTest : IDisposable
         Assert.Equal("Cannot send a friend request to yourself.", result.Message);
     }
 
+    /// <summary>
+    /// Tests that AcceptFriendRequestAsync accepts a valid friend request and notifies both users.
+    /// </summary>
     [Fact]
     public async Task AcceptFriendRequestAsync_WithValidRequest_AcceptsAndNotifiesBothUsers()
     {
@@ -131,6 +152,9 @@ public class FriendshipServiceTest : IDisposable
             Times.Exactly(2));
     }
 
+    /// <summary>
+    /// Tests that AcceptFriendRequestAsync returns an error when the friend request does not exist.
+    /// </summary>
     [Fact]
     public async Task AcceptFriendRequestAsync_WithNonExistentRequest_ReturnsError()
     {
@@ -140,6 +164,9 @@ public class FriendshipServiceTest : IDisposable
         Assert.Equal("Friend request not found.", result.Message);
     }
 
+    /// <summary>
+    /// Tests that DeclineFriendRequestAsync removes a pending friend request and notifies both users.
+    /// </summary>
     [Fact]
     public async Task DeclineFriendRequestAsync_ByAddressee_RemovesRequestAndNotifies()
     {
@@ -171,6 +198,9 @@ public class FriendshipServiceTest : IDisposable
             Times.Exactly(2));
     }
 
+    /// <summary>
+    /// Tests that RemoveFriendAsync removes an existing friendship and notifies the affected users.
+    /// </summary>
     [Fact]
     public async Task RemoveFriendAsync_WithExistingFriendship_RemovesFriendAndNotifies()
     {

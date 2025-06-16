@@ -65,6 +65,6 @@ public class UsersController(IUserService userService) : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(query)) return BadRequest("Search query cannot be empty.");
         var users = await userService.SearchUsersAsync(query);
-        return Ok(users.Select(u => new UserDto(u)));
+        return Ok(users.Select(u => new UserDto(u)).ToList());
     }
 }
