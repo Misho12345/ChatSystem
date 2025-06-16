@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Threading.Tasks;
 using Xunit;
 using Moq;
@@ -43,6 +44,7 @@ public class UserServiceTest : IDisposable
     public void Dispose()
     {
         _context.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     /// <summary>
@@ -60,7 +62,7 @@ public class UserServiceTest : IDisposable
             Id = Guid.NewGuid(),
             Name = name,
             Tag = tag,
-            Email = email,
+            Email = email.ToLowerInvariant(),
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
             CreatedAt = DateTime.UtcNow
         };
@@ -99,7 +101,7 @@ public class UserServiceTest : IDisposable
                 LogLevel.Information,
                 It.IsAny<EventId>(),
                 It.Is<It.IsAnyType>((v, t) =>
-                    v.ToString()
+                    v.ToString()!
                         .Contains($"User registered successfully: {registeredUser.Id}, Tag: {registeredUser.Tag}")),
                 It.IsAny<Exception>(),
                 It.IsAny<Func<It.IsAnyType, Exception, string>>()),
@@ -128,8 +130,8 @@ public class UserServiceTest : IDisposable
                 LogLevel.Warning,
                 It.IsAny<EventId>(),
                 It.Is<It.IsAnyType>((v, t) =>
-                    v.ToString()
-                        .Contains($"Registration attempt failed: Tag '{tag}' or Email '{email}' already exists.")),
+                    v.ToString()!
+                        .Contains($"Registration attempt failed: Tag '{tag}' or Email '{email.ToLowerInvariant()}' already exists.")),
                 It.IsAny<Exception>(),
                 It.IsAny<Func<It.IsAnyType, Exception, string>>()),
             Times.Once);
@@ -157,12 +159,155 @@ public class UserServiceTest : IDisposable
                 LogLevel.Warning,
                 It.IsAny<EventId>(),
                 It.Is<It.IsAnyType>((v, t) =>
-                    v.ToString()
-                        .Contains($"Registration attempt failed: Tag '{tag}' or Email '{email}' already exists.")),
+                    v.ToString()!
+                        .Contains($"Registration attempt failed: Tag '{tag}' or Email '{email.ToLowerInvariant()}' already exists.")),
                 It.IsAny<Exception>(),
                 It.IsAny<Func<It.IsAnyType, Exception, string>>()),
             Times.Once);
     }
 
+    #endregion
+    
+    #region AuthenticateUserAsync Tests
+
+    /// <summary>
+    /// Tests that AuthenticateUserAsync returns the user when credentials are correct.
+    /// </summary>
+    [Fact]
+    public async Task AuthenticateUserAsync_ShouldReturnUser_WhenCredentialsAreCorrect()
+    {
+        const string email = "test@example.com";
+        const string password = "Password123!";
+        var user = await AddTestUser("Test User", "testuser", email, password);
+
+        var authenticatedUser = await _userService.AuthenticateUserAsync(email, password);
+
+        Assert.NotNull(authenticatedUser);
+        Assert.Equal(user.Id, authenticatedUser.Id);
+    }
+
+    /// <summary>
+    /// Tests that AuthenticateUserAsync returns null for a non-existent user.
+    /// </summary>
+    [Fact]
+    public async Task AuthenticateUserAsync_ShouldReturnNull_ForNonExistentUser()
+    {
+        var authenticatedUser = await _userService.AuthenticateUserAsync("nonexistent@example.com", "somepassword");
+
+        Assert.Null(authenticatedUser);
+    }
+
+    /// <summary>
+    /// Tests that AuthenticateUserAsync returns null for an incorrect password.
+    /// </summary>
+    [Fact]
+    public async Task AuthenticateUserAsync_ShouldReturnNull_ForIncorrectPassword()
+    {
+        const string email = "test@example.com";
+        const string correctPassword = "Password123!";
+        const string incorrectPassword = "WrongPassword!";
+        await AddTestUser("Test User", "testuser", email, correctPassword);
+
+        var authenticatedUser = await _userService.AuthenticateUserAsync(email, incorrectPassword);
+
+        Assert.Null(authenticatedUser);
+    }
+
+    #endregion
+
+    #region GetUserByIdAsync Tests
+
+    /// <summary>
+    /// Tests that GetUserByIdAsync returns the correct user when the user exists.
+    /// </summary>
+    [Fact]
+    public async Task GetUserByIdAsync_ShouldReturnUser_WhenUserExists()
+    {
+        var user = await AddTestUser("Test User", "testuser", "test@example.com", "Password123!");
+
+        var foundUser = await _userService.GetUserByIdAsync(user.Id);
+
+        Assert.NotNull(foundUser);
+        Assert.Equal(user.Id, foundUser.Id);
+        Assert.Equal(user.Name, foundUser.Name);
+    }
+
+    /// <summary>
+    /// Tests that GetUserByIdAsync returns null when the user does not exist.
+    /// </summary>
+    [Fact]
+    public async Task GetUserByIdAsync_ShouldReturnNull_WhenUserDoesNotExist()
+    {
+        var foundUser = await _userService.GetUserByIdAsync(Guid.NewGuid());
+
+        Assert.Null(foundUser);
+    }
+
+    #endregion
+
+    #region SearchUsersAsync Tests
+
+    /// <summary>
+    /// Tests that SearchUsersAsync returns users matching the search query.
+    /// </summary>
+    [Fact]
+    public async Task SearchUsersAsync_ShouldReturnMatchingUsers()
+    {
+        await AddTestUser("Alice Smith", "alice", "alice@example.com", "pass");
+        await AddTestUser("Bob Johnson", "bobby", "bob@example.com", "pass");
+        await AddTestUser("Charlie Brown", "charlie", "charlie@example.com", "pass");
+
+        var results = await _userService.SearchUsersAsync("li");
+
+        Assert.NotNull(results);
+        var enumerable = results as User[] ?? results.ToArray();
+        Assert.Equal(2, enumerable.Length);
+        Assert.Contains(enumerable, u => u.Name == "Alice Smith");
+        Assert.Contains(enumerable, u => u.Name == "Charlie Brown");
+    }
+
+    /// <summary>
+    /// Tests that SearchUsersAsync returns an empty list when no users match the query.
+    /// </summary>
+    [Fact]
+    public async Task SearchUsersAsync_ShouldReturnEmpty_WhenNoMatches()
+    {
+        await AddTestUser("Alice", "alice", "alice@example.com", "pass");
+        
+        var results = await _userService.SearchUsersAsync("xyz");
+
+        Assert.NotNull(results);
+        Assert.Empty(results);
+    }
+
+    /// <summary>
+    /// Tests that SearchUsersAsync is case-insensitive.
+    /// </summary>
+    [Fact]
+    public async Task SearchUsersAsync_ShouldBeCaseInsensitive()
+    {
+        await AddTestUser("Test User", "TESTUSER", "test@example.com", "pass");
+
+        var results = await _userService.SearchUsersAsync("test");
+        Assert.Single(results);
+        
+        results = await _userService.SearchUsersAsync("Test");
+        Assert.Single(results);
+    }
+    
+    /// <summary>
+    /// Tests that SearchUsersAsync returns an empty enumerable if the query is whitespace.
+    /// </summary>
+    [Fact]
+    public async Task SearchUsersAsync_ShouldReturnEmpty_WhenQueryIsWhitespace()
+    {
+        await AddTestUser("Test User", "testuser", "test@example.com", "Password123!");
+
+        var results = await _userService.SearchUsersAsync("   ");
+
+        Assert.NotNull(results);
+        Assert.Empty(results);
+    }
+    
     #endregion
 }
