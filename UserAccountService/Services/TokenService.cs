@@ -1,13 +1,13 @@
-﻿using UserAccountService.Data;
-using UserAccountService.Models;
-using UserAccountService.Models.Configuration;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
+﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+using UserAccountService.Data;
+using UserAccountService.Models;
+using UserAccountService.Models.Configuration;
 
 namespace UserAccountService.Services;
 
@@ -18,41 +18,44 @@ public class TokenService(UserAccountDbContext context, IOptions<JwtSettings> jw
 
     public (string accessToken, RefreshToken refreshToken) GenerateTokens(User user)
     {
-        var claims = new List<Claim>
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var key = Encoding.ASCII.GetBytes(_jwtSettings.Secret);
+
+        var jwtId = Guid.NewGuid().ToString().Trim();
+
+        var claims = new ClaimsIdentity([
+            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+            new Claim(JwtRegisteredClaimNames.Jti, jwtId),
+            new Claim(JwtRegisteredClaimNames.Email, user.Email),
+            new Claim("tag", user.Tag)
+        ]);
+
+        var tokenDescriptor = new SecurityTokenDescriptor
         {
-            new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-            new(JwtRegisteredClaimNames.Email, user.Email),
-            new("tag", user.Tag),
-            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            Subject = claims,
+            Expires = DateTime.UtcNow.AddMinutes(_jwtSettings.ExpiryMinutes),
+            Issuer = _jwtSettings.Issuer,
+            Audience = _jwtSettings.Audience,
+            SigningCredentials =
+                new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
         };
+        var accessToken = tokenHandler.WriteToken(tokenHandler.CreateToken(tokenDescriptor));
 
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Secret));
-        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-        var accessTokenSecurityToken = new JwtSecurityToken(
-            issuer: _jwtSettings.Issuer,
-            audience: _jwtSettings.Audience,
-            claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(_jwtSettings.ExpiryMinutes),
-            signingCredentials: creds
-        );
-
-        var accessToken = new JwtSecurityTokenHandler().WriteToken(accessTokenSecurityToken);
-
-        var newRefreshToken = new RefreshToken
+        var refreshToken = new RefreshToken
         {
             Token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)),
-            JwtId = accessTokenSecurityToken.Id,
+            ExpiryDate = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiryDays),
             UserId = user.Id,
-            CreatedAt = DateTime.UtcNow,
-            ExpiryDate = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiryDays)
+            JwtId = jwtId,
+            Used = false,
+            Invalidated = false
         };
 
-        context.RefreshTokens.Add(newRefreshToken);
+        context.RefreshTokens.Add(refreshToken);
+        context.SaveChanges();
 
-        logger.LogInformation("Generated new tokens for User ID: {UserId}. Access Token JTI: {Jti}", user.Id,
-            newRefreshToken.JwtId);
-        return (accessToken, newRefreshToken);
+        logger.LogInformation("Generated new tokens for User ID: {UserId}. Access Token JTI: {JwtId}", user.Id, jwtId);
+        return (accessToken, refreshToken);
     }
 
     public async Task<(string? newAccessToken, RefreshToken? newRefreshToken)> RefreshAccessTokenAsync(
@@ -94,6 +97,8 @@ public class TokenService(UserAccountDbContext context, IOptions<JwtSettings> jw
 
         var (newAccessToken, newGeneratedRefreshToken) = GenerateTokens(storedToken.User!);
 
+        await context.SaveChangesAsync();
+
         logger.LogInformation(
             "Successfully refreshed tokens for User ID: {UserId} using old refresh token: {OldRefreshToken}",
             storedToken.UserId, oldRefreshTokenString);
@@ -102,10 +107,9 @@ public class TokenService(UserAccountDbContext context, IOptions<JwtSettings> jw
 
     public async Task<bool> InvalidateRefreshTokenAsync(string refreshTokenString)
     {
-        var storedToken = await context.RefreshTokens
-            .FirstOrDefaultAsync(rt => rt.Token == refreshTokenString);
+        var storedToken = await context.RefreshTokens.FirstOrDefaultAsync(rt => rt.Token == refreshTokenString);
 
-        if (storedToken == null || storedToken.Invalidated || storedToken.Used)
+        if (storedToken == null || storedToken.Used || storedToken.Invalidated)
         {
             logger.LogWarning(
                 "Attempt to invalidate an invalid, already invalidated, or used refresh token: {RefreshToken}",
@@ -115,6 +119,7 @@ public class TokenService(UserAccountDbContext context, IOptions<JwtSettings> jw
 
         storedToken.Invalidated = true;
         context.RefreshTokens.Update(storedToken);
+        await context.SaveChangesAsync();
 
         logger.LogInformation("Refresh token invalidated successfully: {RefreshToken} for User ID: {UserId}",
             refreshTokenString, storedToken.UserId);

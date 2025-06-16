@@ -16,6 +16,6 @@ public sealed class RefreshToken
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime ExpiryDate { get; set; }
 
-    public bool Used { get; set; } = false;
-    public bool Invalidated { get; set; } = false;
+    public bool Used { get; set; }
+    public bool Invalidated { get; set; }
 }

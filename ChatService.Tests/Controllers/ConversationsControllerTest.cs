@@ -15,12 +15,18 @@ using Xunit;
 
 namespace ChatService.Tests.Controllers;
 
+/// <summary>
+/// Unit tests for the ConversationsController class.
+/// </summary>
 public class ConversationsControllerTest
 {
     private readonly Mock<IConversationService> _mockConversationService;
     private readonly ConversationsController _controller;
     private readonly Guid _testUserId = Guid.NewGuid();
 
+    /// <summary>
+    /// Initializes the ConversationsControllerTest class and sets up mock dependencies.
+    /// </summary>
     public ConversationsControllerTest()
     {
         _mockConversationService = new Mock<IConversationService>();
@@ -33,12 +39,15 @@ public class ConversationsControllerTest
             new Claim("tag", "testuser#1234")
         ], "mock"));
 
-        _controller.ControllerContext = new ControllerContext()
+        _controller.ControllerContext = new ControllerContext
         {
-            HttpContext = new DefaultHttpContext() { User = user }
+            HttpContext = new DefaultHttpContext { User = user }
         };
     }
 
+    /// <summary>
+    /// Tests that GetMessages returns an Ok result with messages when the conversation exists.
+    /// </summary>
     [Fact]
     public async Task GetMessages_WhenConversationExists_ReturnsOkWithMessages()
     {
@@ -59,7 +68,7 @@ public class ConversationsControllerTest
         _mockConversationService.Setup(s => s.GetMessagesAsync(conversationId, _testUserId, null, 20))
             .ReturnsAsync(messages);
 
-        var result = await _controller.GetMessages(conversationId, null, 20);
+        var result = await _controller.GetMessages(conversationId, null);
 
         var okResult = Assert.IsType<OkObjectResult>(result);
         var returnedDtos = Assert.IsType<IEnumerable<MessageDto>>(okResult.Value, exactMatch: false);
@@ -68,6 +77,9 @@ public class ConversationsControllerTest
         Assert.Equal("Hello", messageDtos.First().Text);
     }
 
+    /// <summary>
+    /// Tests that GetMessages propagates an UnauthorizedAccessException when the service throws it.
+    /// </summary>
     [Fact]
     public async Task GetMessages_WhenServiceThrowsUnauthorized_ShouldPropagateException()
     {
@@ -76,9 +88,12 @@ public class ConversationsControllerTest
         _mockConversationService.Setup(s => s.GetMessagesAsync(It.IsAny<string>(), It.IsAny<Guid>(), null, 20))
             .ThrowsAsync(new UnauthorizedAccessException());
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _controller.GetMessages(conversationId, null, 20));
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _controller.GetMessages(conversationId, null));
     }
 
+    /// <summary>
+    /// Tests that InitiateConversation returns an Ok result with a ConversationDto when a valid recipient is provided.
+    /// </summary>
     [Fact]
     public async Task InitiateConversation_WithValidRecipient_ReturnsOkWithConversationDto()
     {
@@ -101,6 +116,9 @@ public class ConversationsControllerTest
         _mockConversationService.Verify(s => s.CreateOrGetConversationAsync(_testUserId, recipientId), Times.Once);
     }
 
+    /// <summary>
+    /// Tests that InitiateConversation returns a BadRequest result when the recipient is the same as the sender.
+    /// </summary>
     [Fact]
     public async Task InitiateConversation_WithSelfAsRecipient_ReturnsBadRequest()
     {
@@ -114,6 +132,9 @@ public class ConversationsControllerTest
             Times.Never);
     }
 
+    /// <summary>
+    /// Tests that InitiateConversation returns an InternalServerError result when the service returns null.
+    /// </summary>
     [Fact]
     public async Task InitiateConversation_WhenServiceReturnsNull_ReturnsInternalServerError()
     {
@@ -128,6 +149,9 @@ public class ConversationsControllerTest
         Assert.Equal(StatusCodes.Status500InternalServerError, statusCodeResult.StatusCode);
     }
 
+    /// <summary>
+    /// Tests that GetConversations returns an Ok result with a list of ConversationDtos when the user has conversations.
+    /// </summary>
     [Fact]
     public async Task GetConversations_WhenUserHasConversations_ReturnsOkWithListOfConversationDtos()
     {
@@ -160,6 +184,9 @@ public class ConversationsControllerTest
         Assert.Null(conversationDtos.Last().LastMessage);
     }
 
+    /// <summary>
+    /// Tests that MarkConversationAsRead calls the service and returns a NoContent result when the request is valid.
+    /// </summary>
     [Fact]
     public async Task MarkConversationAsRead_WithValidRequest_CallsServiceAndReturnsNoContent()
     {
