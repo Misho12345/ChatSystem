@@ -1,4 +1,8 @@
-﻿document.addEventListener('DOMContentLoaded', async () => {
+﻿/**
+ * Initializes the application once the DOM content is fully loaded.
+ * Sets up authentication, UI elements, and event listeners for user interactions.
+ */
+document.addEventListener('DOMContentLoaded', async () => {
     Auth.init();
     if (!Auth.isLoggedIn() && window.location.pathname.endsWith('main.html')) {
         window.location.href = 'index.html';
@@ -32,9 +36,10 @@
     messagesPanel.addEventListener('scroll', UI.handleScrollForMessages);
 });
 
-let currentConversationId = null;
-let friendsData = [];
-
+/**
+ * Loads initial data for the application, including conversations, friends, and friend requests.
+ * Handles authentication errors and updates the UI accordingly.
+ */
 async function loadInitialData() {
     try {
         const [conversations, friends, requests] = await Promise.all([
@@ -51,6 +56,10 @@ async function loadInitialData() {
     }
 }
 
+/**
+ * Handles the search functionality for users.
+ * Sends a search query to the API and updates the UI with the results.
+ */
 async function handleSearch() {
     const query = document.getElementById('searchInput').value;
     if (!query.trim()) {
@@ -65,6 +74,10 @@ async function handleSearch() {
     }
 }
 
+/**
+ * Sends a message in the currently active conversation.
+ * Clears the input field after sending the message.
+ */
 async function handleSendMessage() {
     const messageText = document.getElementById('messageInput').value;
     if (messageText.trim() && currentConversationId) {
@@ -77,6 +90,10 @@ async function handleSendMessage() {
     }
 }
 
+/**
+ * Handles the click event on a conversation item.
+ * Sets the active conversation, updates the UI, and loads messages for the conversation.
+ */
 async function handleConversationClick(event) {
     const target = event.target.closest('.list-group-item[data-conversation-id]');
     if (target) {
@@ -116,7 +133,10 @@ async function handleConversationClick(event) {
     }
 }
 
-
+/**
+ * Handles actions on friend requests, such as accepting or declining.
+ * Updates the UI after performing the action.
+ */
 async function handleFriendRequestAction(event) {
     const button = event.target.closest('button[data-request-id]');
     if (!button) return;
@@ -136,6 +156,10 @@ async function handleFriendRequestAction(event) {
     }
 }
 
+/**
+ * Handles the click event on a search result item.
+ * Sends a friend request to the selected user.
+ */
 async function handleSearchResultClick(event) {
     const button = event.target.closest('button[data-user-id]');
     if (!button) return;
@@ -151,7 +175,18 @@ async function handleSearchResultClick(event) {
     }
 }
 
+/**
+ * Provides access to application-level functions and data.
+ */
 window.App = {
+    /**
+     * Retrieves the ID of the currently active conversation.
+     * @returns {string|null} The current conversation ID.
+     */
     getCurrentConversationId: () => currentConversationId,
+
+    /**
+     * Loads initial data for the application.
+     */
     loadInitialData,
 };

@@ -1,7 +1,14 @@
-﻿const UI = (function () {
+﻿/**
+ * UI module for managing the rendering and interaction of various elements in the application.
+ */
+const UI = (function () {
     let oldestMessageTimestamp = null;
     let isLoadingMessages = false;
 
+    /**
+     * Creates a separator element to indicate new messages in the UI.
+     * @returns {HTMLDivElement} - The separator element.
+     */
     function createSeparatorElement() {
         const separator = document.createElement('div');
         separator.className = 'separator-container';
@@ -13,6 +20,14 @@
         return separator;
     }
 
+    /**
+     * Adds a friend request to the friend requests list in the UI.
+     * Updates the count of pending friend requests.
+     * @param {Object} req - The friend request object.
+     * @param {string} req.id - The ID of the friend request.
+     * @param {string} req.requesterName - The name of the requester.
+     * @param {string} req.requesterTag - The tag of the requester.
+     */
     function addFriendRequest(req) {
         const listElement = document.getElementById('friendRequestsList');
         const countElement = document.getElementById('friendRequestCount');
@@ -35,6 +50,12 @@
         countElement.textContent = parseInt(countElement.textContent, 10) + 1;
     }
 
+    /**
+     * Renders the list of conversations in the UI.
+     * Sorts friends by the last updated conversation and displays unread message counts.
+     * @param {Object[]} conversations - The list of conversations.
+     * @param {Object[]} friends - The list of friends.
+     */
     function renderConversationsList(conversations, friends) {
         const listElement = document.getElementById('conversationsList');
         const countElement = document.getElementById('friendsCount');
@@ -93,6 +114,11 @@
         }
     }
 
+    /**
+     * Renders the list of friend requests in the UI.
+     * Updates the count of pending friend requests.
+     * @param {Object[]} requests - The list of friend requests.
+     */
     function renderFriendRequests(requests) {
         const listElement = document.getElementById('friendRequestsList');
         const countElement = document.getElementById('friendRequestCount');
@@ -117,6 +143,11 @@
         }
     }
 
+    /**
+     * Renders the search results for users in the UI.
+     * Filters out the current user from the results.
+     * @param {Object[]} users - The list of users.
+     */
     function renderSearchResults(users) {
         const listElement = document.getElementById('searchResults');
         listElement.innerHTML = '';
@@ -137,6 +168,12 @@
         }
     }
 
+    /**
+     * Creates a message element for rendering in the UI.
+     * @param {Object} messageDto - The message data transfer object.
+     * @param {string} currentUserId - The ID of the current user.
+     * @returns {HTMLDivElement} - The message element.
+     */
     function createMessageElement(messageDto, currentUserId) {
         const div = document.createElement('div');
         const isSender = messageDto.senderId === currentUserId;
@@ -154,6 +191,13 @@
         return div;
     }
 
+    /**
+     * Renders a list of messages in the UI.
+     * Adds a separator for unread messages if applicable.
+     * @param {Object[]} messages - The list of messages.
+     * @param {string} currentUserId - The ID of the current user.
+     * @param {number} [unreadCount=0] - The number of unread messages.
+     */
     function renderMessages(messages, currentUserId, unreadCount = 0) {
         const panel = document.getElementById('messagesPanel');
         panel.innerHTML = '';
@@ -181,6 +225,12 @@
         }
     }
 
+    /**
+     * Renders a single message in the UI.
+     * Updates the oldest message timestamp if applicable.
+     * @param {Object} messageDto - The message data transfer object.
+     * @param {string} currentUserId - The ID of the current user.
+     */
     function renderSingleMessage(messageDto, currentUserId) {
         const panel = document.getElementById('messagesPanel');
         const placeholder = panel.querySelector('p.text-center.text-muted');
@@ -192,6 +242,12 @@
         }
     }
 
+    /**
+     * Prepends older messages to the UI panel.
+     * Adjusts the scroll position to maintain the view.
+     * @param {Object[]} messages - The list of older messages.
+     * @param {string} currentUserId - The ID of the current user.
+     */
     function prependMessages(messages, currentUserId) {
         const panel = document.getElementById('messagesPanel');
         const originalScrollHeight = panel.scrollHeight;
@@ -208,11 +264,18 @@
         isLoadingMessages = false;
     }
 
+    /**
+     * Scrolls the messages panel to the bottom.
+     */
     function scrollToBottom() {
         const panel = document.getElementById('messagesPanel');
         panel.scrollTop = panel.scrollHeight;
     }
 
+    /**
+     * Handles scrolling in the messages panel to load older messages.
+     * Prevents multiple simultaneous loading operations.
+     */
     async function handleScrollForMessages() {
         const panel = document.getElementById('messagesPanel');
         if (panel.scrollTop === 0 && !isLoadingMessages && App.getCurrentConversationId() && oldestMessageTimestamp) {
@@ -232,6 +295,11 @@
         }
     }
 
+    /**
+     * Escapes HTML characters in a string to prevent XSS attacks.
+     * @param {string} unsafe - The unsafe string to escape.
+     * @returns {string} - The escaped string.
+     */
     function escapeHtml(unsafe) {
         if (typeof unsafe !== 'string') {
             return '';
@@ -244,6 +312,11 @@
             .replace(/'/g, "&#039;");
     }
 
+    /**
+     * Sets the active conversation in the UI.
+     * Updates the oldest message timestamp and loading state.
+     * @param {string} conversationId - The ID of the active conversation.
+     */
     function setActiveConversation(conversationId) {
         document.querySelectorAll('#conversationsList .list-group-item').forEach(item => {
             item.classList.remove('active');
@@ -256,6 +329,13 @@
         isLoadingMessages = false;
     }
 
+    /**
+     * Updates the conversation list in the UI when a new message is received.
+     * Handles unread message counts and reorders the list.
+     * @param {Object} messageDto - The message data transfer object.
+     * @param {boolean} isSender - Whether the current user is the sender of the message.
+     * @param {boolean} isChatOpen - Whether the chat is currently open.
+     */
     function updateConversationListOnNewMessage(messageDto, isSender, isChatOpen) {
         const listElement = document.getElementById('conversationsList');
         let conversationElement = listElement.querySelector(`[data-conversation-id="${messageDto.conversationId}"]`);
@@ -291,6 +371,10 @@
         }
     }
 
+    /**
+     * Displays the current user's information in the UI.
+     * Fetches the user details from the API and updates the display.
+     */
     async function displayCurrentUser() {
         const display = document.getElementById('currentUserDisplay');
         if (Auth.isLoggedIn()) {
@@ -308,13 +392,21 @@
         }
     }
 
+    /**
+     * Sets the current user's ID in the authentication module.
+     * @param {string} id - The ID of the current user.
+     */
     Auth.setCurrentUserId = function (id) {
         this.currentUserId = id;
     };
+
+    /**
+     * Retrieves the current user's ID from the authentication module.
+     * @returns {string} - The ID of the current user.
+     */
     Auth.getCurrentUserId = function () {
         return this.currentUserId;
     };
-
 
     return {
         renderConversationsList,

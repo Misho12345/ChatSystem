@@ -1,12 +1,16 @@
 services:
   user_account_service:
+    # Defines the user account service container.
     image: ${DOCKER_REGISTRY-}user-account-service
     build:
+      # Specifies the build context and Dockerfile location for the user account service.
       context: .
       dockerfile: UserAccountService/Dockerfile
     ports:
+      # Maps port 8001 on the host to port 8080 in the container.
       - "8001:8080"
     environment:
+      # Sets environment variables for the user account service.
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_HTTP_PORTS=8080
       - ConnectionStrings__PostgresConnection=Host=postgres_db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD};
@@ -16,18 +20,24 @@ services:
       - JwtSettings__ExpiryMinutes=15
       - JwtSettings__RefreshTokenExpiryDays=7
     depends_on:
+      # Specifies that the user account service depends on the postgres_db service.
       postgres_db:
         condition: service_healthy
     networks:
+      # Connects the user account service to the app-network.
       - app-network
-  
+
   chat_service:
+    # Defines the chat service container.
     build:
+      # Specifies the build context and Dockerfile location for the chat service.
       context: .
       dockerfile: ChatService/Dockerfile
     ports:
+      # Maps port 8002 on the host to port 8080 in the container.
       - "8002:8080"
     environment:
+      # Sets environment variables for the chat service.
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_HTTP_PORTS=8080
       - ConnectionStrings__MongoConnection=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongo_db:27017/
@@ -36,53 +46,72 @@ services:
       - JwtSettings__Issuer=https://localhost:8001
       - JwtSettings__Audience=https://localhost:8002
     depends_on:
+      # Specifies that the chat service depends on the mongo_db service.
       - mongo_db
     networks:
+      # Connects the chat service to the app-network.
       - app-network
 
   frontend:
+    # Defines the frontend container.
     build:
+      # Specifies the build context and Dockerfile location for the frontend.
       context: .
       dockerfile: Frontend/Dockerfile
     image: ${DOCKER_REGISTRY-}frontend
     ports:
+      # Maps port 3000 on the host to port 80 in the container.
       - "3000:80"
     depends_on:
+      # Specifies that the frontend depends on the user_account_service and chat_service.
       - user_account_service
       - chat_service
     networks:
+      # Connects the frontend to the app-network.
       - app-network
 
   postgres_db:
+    # Defines the PostgreSQL database container.
     image: postgres:latest
     environment:
+      # Sets environment variables for the PostgreSQL database.
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
+      # Mounts a volume for persistent PostgreSQL data storage.
       - postgres_data:/var/lib/postgresql/data
     ports:
+      # Maps port 5432 on the host to port 5432 in the container.
       - "5432:5432"
     networks:
+      # Connects the PostgreSQL database to the app-network.
       - app-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      # Configures a health check for the PostgreSQL database.
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
       interval: 10s
       timeout: 5s
       retries: 5
 
   mongo_db:
+    # Defines the MongoDB database container.
     image: mongo:latest
     environment:
+      # Sets environment variables for the MongoDB database.
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
     volumes:
+      # Mounts a volume for persistent MongoDB data storage.
       - mongo_data:/data/db
     ports:
+      # Maps port 27017 on the host to port 27017 in the container.
       - "27017:27017"
     networks:
+      # Connects the MongoDB database to the app-network.
       - app-network
     healthcheck:
+      # Configures a health check for the MongoDB database.
       test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
       interval: 10s
       timeout: 5s
@@ -90,8 +119,11 @@ services:
 
 networks:
   app-network:
+    # Defines a bridge network for inter-container communication.
     driver: bridge
 
 volumes:
   postgres_data:
+  # Defines a volume for PostgreSQL data storage.
   mongo_data:
+  # Defines a volume for MongoDB data storage.
