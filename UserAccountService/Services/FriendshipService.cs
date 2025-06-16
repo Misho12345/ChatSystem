@@ -7,9 +7,19 @@ using UserAccountService.Hubs;
 
 namespace UserAccountService.Services;
 
+/// <summary>
+/// Provides methods for managing friendships between users, including sending requests, accepting/declining requests, 
+/// removing friends, and retrieving friendship-related data.
+/// </summary>
 public class FriendshipService(UserAccountDbContext context, ILogger<FriendshipService> logger, IHubContext<FriendshipHub> friendshipHubContext)
     : IFriendshipService
 {
+    /// <summary>
+    /// Sends a friend request from one user to another.
+    /// </summary>
+    /// <param name="requesterId">The ID of the user sending the friend request.</param>
+    /// <param name="addresseeId">The ID of the user receiving the friend request.</param>
+    /// <returns>A <see cref="FriendshipResultDto"/> containing the result of the operation.</returns>
     public async Task<FriendshipResultDto> SendFriendRequestAsync(Guid requesterId, Guid addresseeId)
     {
         if (requesterId == addresseeId)
@@ -100,6 +110,12 @@ public class FriendshipService(UserAccountDbContext context, ILogger<FriendshipS
         }
     }
 
+    /// <summary>
+    /// Accepts a pending friend request.
+    /// </summary>
+    /// <param name="friendshipId">The ID of the friendship to accept.</param>
+    /// <param name="currentUserId">The ID of the user accepting the request.</param>
+    /// <returns>A <see cref="FriendshipResultDto"/> containing the result of the operation.</returns>
     public async Task<FriendshipResultDto> AcceptFriendRequestAsync(Guid friendshipId, Guid currentUserId)
     {
         var friendship = await context.Friendships.FindAsync(friendshipId);
@@ -148,6 +164,12 @@ public class FriendshipService(UserAccountDbContext context, ILogger<FriendshipS
         }
     }
 
+    /// <summary>
+    /// Declines or cancels a pending friend request.
+    /// </summary>
+    /// <param name="friendshipId">The ID of the friendship to decline or cancel.</param>
+    /// <param name="currentUserId">The ID of the user declining or canceling the request.</param>
+    /// <returns>A <see cref="FriendshipResultDto"/> containing the result of the operation.</returns>
     public async Task<FriendshipResultDto> DeclineFriendRequestAsync(Guid friendshipId, Guid currentUserId)
     {
         var friendship = await context.Friendships.FindAsync(friendshipId);
@@ -195,6 +217,12 @@ public class FriendshipService(UserAccountDbContext context, ILogger<FriendshipS
         }
     }
 
+    /// <summary>
+    /// Removes an existing friendship between two users.
+    /// </summary>
+    /// <param name="userId">The ID of the user initiating the removal.</param>
+    /// <param name="friendId">The ID of the friend to remove.</param>
+    /// <returns>A <see cref="FriendshipResultDto"/> containing the result of the operation.</returns>
     public async Task<FriendshipResultDto> RemoveFriendAsync(Guid userId, Guid friendId)
     {
         var friendship = await context.Friendships
@@ -232,6 +260,11 @@ public class FriendshipService(UserAccountDbContext context, ILogger<FriendshipS
         }
     }
 
+    /// <summary>
+    /// Retrieves a list of friends for a given user.
+    /// </summary>
+    /// <param name="userId">The ID of the user whose friends are being retrieved.</param>
+    /// <returns>A collection of <see cref="FriendDto"/> representing the user's friends.</returns>
     public async Task<IEnumerable<FriendDto>> GetFriendsAsync(Guid userId)
     {
         var friends = await context.Friendships
@@ -249,6 +282,11 @@ public class FriendshipService(UserAccountDbContext context, ILogger<FriendshipS
         return friends;
     }
 
+    /// <summary>
+    /// Retrieves a list of incoming friend requests for a given user.
+    /// </summary>
+    /// <param name="userId">The ID of the user whose incoming requests are being retrieved.</param>
+    /// <returns>A collection of <see cref="FriendRequestDto"/> representing the incoming requests.</returns>
     public async Task<IEnumerable<FriendRequestDto>> GetPendingIncomingRequestsAsync(Guid userId)
     {
         var requests = await context.Friendships
@@ -267,6 +305,11 @@ public class FriendshipService(UserAccountDbContext context, ILogger<FriendshipS
         return requests;
     }
 
+    /// <summary>
+    /// Retrieves a list of outgoing friend requests for a given user.
+    /// </summary>
+    /// <param name="userId">The ID of the user whose outgoing requests are being retrieved.</param>
+    /// <returns>A collection of <see cref="FriendRequestDto"/> representing the outgoing requests.</returns>
     public async Task<IEnumerable<FriendRequestDto>> GetPendingOutgoingRequestsAsync(Guid userId)
     {
         var requests = await context.Friendships
@@ -286,6 +329,12 @@ public class FriendshipService(UserAccountDbContext context, ILogger<FriendshipS
     }
 
 
+    /// <summary>
+    /// Retrieves the friendship status between two users.
+    /// </summary>
+    /// <param name="userId1">The ID of the first user.</param>
+    /// <param name="userId2">The ID of the second user.</param>
+    /// <returns>The <see cref="FriendshipStatus"/> representing the status of the friendship, or null if no friendship exists.</returns>
     public async Task<FriendshipStatus?> GetFriendshipStatusAsync(Guid userId1, Guid userId2)
     {
         var friendship = await context.Friendships

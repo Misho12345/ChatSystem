@@ -1,0 +1,15 @@
+﻿<Project>
+    <PropertyGroup Condition=" '$(Configuration)' == 'Debug' and '$(MSBuildProjectExtension)'!= '.dcproj' ">
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <NoWarn>$(NoWarn);1591</NoWarn>
+        <DocumentationMarkdown>$(MSBuildProjectDirectory)\DOCS.md</DocumentationMarkdown>
+        <VsxmdAutoDeleteXml>true</VsxmdAutoDeleteXml>
+    </PropertyGroup>
+
+    <ItemGroup Condition=" '$(Configuration)' == 'Debug' and '$(MSBuildProjectExtension)'!= '.dcproj' ">
+        <PackageReference Include="Vsxmd" Version="1.4.5">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+    </ItemGroup>
+</Project>

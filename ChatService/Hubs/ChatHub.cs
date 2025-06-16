@@ -5,10 +5,17 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace ChatService.Hubs;
 
+/// <summary>
+/// SignalR hub for managing real-time chat functionality.
+/// </summary>
 [Authorize]
-public class ChatHub(IConversationService conversationService, ILogger<ChatHub> logger)
-    : Hub
+public class ChatHub(IConversationService conversationService, ILogger<ChatHub> logger) : Hub
 {
+    /// <summary>
+    /// Sends a message to all participants in a conversation.
+    /// </summary>
+    /// <param name="conversationId">The ID of the conversation.</param>
+    /// <param name="text">The text content of the message.</param>
     public async Task SendMessage(string conversationId, string text)
     {
         var senderId = Guid.Parse(Context.UserIdentifier!);
@@ -42,6 +49,10 @@ public class ChatHub(IConversationService conversationService, ILogger<ChatHub> 
         }
     }
 
+    /// <summary>
+    /// Adds the current connection to a SignalR group representing a conversation.
+    /// </summary>
+    /// <param name="conversationId">The ID of the conversation to join.</param>
     public async Task JoinConversation(string conversationId)
     {
         await Groups.AddToGroupAsync(Context.ConnectionId, conversationId);
@@ -49,6 +60,10 @@ public class ChatHub(IConversationService conversationService, ILogger<ChatHub> 
             conversationId);
     }
 
+    /// <summary>
+    /// Handles the event when a client connects to the hub.
+    /// Adds the connection to the user's SignalR group if authenticated.
+    /// </summary>
     public override async Task OnConnectedAsync()
     {
         var userId = Context.UserIdentifier;

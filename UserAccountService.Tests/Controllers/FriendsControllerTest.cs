@@ -14,6 +14,9 @@ using Microsoft.Extensions.Logging;
 
 namespace UserAccountService.Tests.Controllers;
 
+/// <summary>
+/// Unit tests for the FriendsController class.
+/// </summary>
 public class FriendsControllerTest
 {
     private readonly Mock<IFriendshipService> _friendshipServiceMock;
@@ -21,6 +24,10 @@ public class FriendsControllerTest
     private readonly FriendsController _controller;
     private readonly Guid _currentUserId;
 
+    /// <summary>
+    /// Initializes a new instance of the FriendsControllerTest class.
+    /// Sets up mocks and the controller context with a valid user ID claim.
+    /// </summary>
     public FriendsControllerTest()
     {
         _friendshipServiceMock = new Mock<IFriendshipService>();
@@ -40,11 +47,20 @@ public class FriendsControllerTest
         };
     }
 
+    /// <summary>
+    /// Retrieves the value of a specified property from an object.
+    /// </summary>
+    /// <param name="src">The source object.</param>
+    /// <param name="propName">The name of the property to retrieve.</param>
+    /// <returns>The value of the property, or null if the property does not exist.</returns>
     private static object GetPropertyValue(object src, string propName)
     {
         return src.GetType().GetProperty(propName)?.GetValue(src, null);
     }
 
+    /// <summary>
+    /// Tests that SendFriendRequest returns OkObjectResult when the request is successful.
+    /// </summary>
     [Fact]
     public async Task SendFriendRequest_ShouldReturnOk_WhenRequestIsSuccessful()
     {
@@ -61,6 +77,9 @@ public class FriendsControllerTest
         Assert.Equal(expectedResult.FriendshipId, actualResult.FriendshipId);
     }
 
+    /// <summary>
+    /// Tests that SendFriendRequest returns BadRequestObjectResult when the request fails.
+    /// </summary>
     [Fact]
     public async Task SendFriendRequest_ShouldReturnBadRequest_WhenRequestFails()
     {
@@ -77,6 +96,9 @@ public class FriendsControllerTest
         Assert.Equal(expectedResult.Message, actualMessage);
     }
 
+    /// <summary>
+    /// Tests that AcceptFriendRequest returns OkObjectResult when the acceptance is successful.
+    /// </summary>
     [Fact]
     public async Task AcceptFriendRequest_ShouldReturnOk_WhenAcceptanceIsSuccessful()
     {
@@ -93,6 +115,9 @@ public class FriendsControllerTest
         Assert.Equal(expectedResult.Status, actualResult.Status);
     }
 
+    /// <summary>
+    /// Tests that AcceptFriendRequest returns ForbidResult when the user is not authorized.
+    /// </summary>
     [Fact]
     public async Task AcceptFriendRequest_ShouldReturnForbid_WhenNotAuthorized()
     {
@@ -106,6 +131,9 @@ public class FriendsControllerTest
         Assert.IsType<ForbidResult>(result);
     }
 
+    /// <summary>
+    /// Tests that AcceptFriendRequest returns NotFoundObjectResult when the friendship is not found.
+    /// </summary>
     [Fact]
     public async Task AcceptFriendRequest_ShouldReturnNotFound_WhenFriendshipNotFound()
     {
@@ -122,6 +150,9 @@ public class FriendsControllerTest
         Assert.Equal(expectedResult.Message, actualMessage);
     }
 
+    /// <summary>
+    /// Tests that AcceptFriendRequest returns BadRequestObjectResult for other failures.
+    /// </summary>
     [Fact]
     public async Task AcceptFriendRequest_ShouldReturnBadRequest_ForOtherFailures()
     {
@@ -138,6 +169,9 @@ public class FriendsControllerTest
         Assert.Equal(expectedResult.Message, actualMessage);
     }
 
+    /// <summary>
+    /// Tests that DeclineFriendRequest returns OkObjectResult when the request is declined successfully.
+    /// </summary>
     [Fact]
     public async Task DeclineFriendRequest_ShouldReturnOk_WhenDeclinedSuccessfully()
     {
@@ -154,6 +188,9 @@ public class FriendsControllerTest
         Assert.Equal(expectedResult.Status, actualResult.Status);
     }
 
+    /// <summary>
+    /// Tests that DeclineFriendRequest returns ForbidResult when the user is not authorized.
+    /// </summary>
     [Fact]
     public async Task DeclineFriendRequest_ShouldReturnForbid_WhenDeclineNotAuthorized()
     {
@@ -167,6 +204,9 @@ public class FriendsControllerTest
         Assert.IsType<ForbidResult>(result);
     }
 
+    /// <summary>
+    /// Tests that DeclineFriendRequest returns NotFoundObjectResult when the friendship is not found.
+    /// </summary>
     [Fact]
     public async Task DeclineFriendRequest_ShouldReturnNotFound_WhenDeclineFriendshipNotFound()
     {
@@ -183,6 +223,9 @@ public class FriendsControllerTest
         Assert.Equal(expectedResult.Message, actualMessage);
     }
 
+    /// <summary>
+    /// Tests that DeclineFriendRequest returns BadRequestObjectResult for other failures.
+    /// </summary>
     [Fact]
     public async Task DeclineFriendRequest_ShouldReturnBadRequest_ForOtherDeclineFailures()
     {
@@ -200,6 +243,9 @@ public class FriendsControllerTest
         Assert.Equal(expectedResult.Message, actualMessage);
     }
 
+    /// <summary>
+    /// Tests that RemoveFriend returns OkObjectResult when the friend is removed successfully.
+    /// </summary>
     [Fact]
     public async Task RemoveFriend_ShouldReturnOk_WhenRemovedSuccessfully()
     {
@@ -216,6 +262,9 @@ public class FriendsControllerTest
         Assert.Equal(expectedResult.Message, actualResult.Message);
     }
 
+    /// <summary>
+    /// Tests that RemoveFriend returns NotFoundObjectResult when the friendship is not found.
+    /// </summary>
     [Fact]
     public async Task RemoveFriend_ShouldReturnNotFound_WhenFriendshipNotFound()
     {
@@ -232,6 +281,9 @@ public class FriendsControllerTest
         Assert.Equal(expectedResult.Message, actualMessage);
     }
 
+    /// <summary>
+    /// Tests that RemoveFriend returns BadRequestObjectResult for other failures.
+    /// </summary>
     [Fact]
     public async Task RemoveFriend_ShouldReturnBadRequest_ForOtherFailures()
     {
@@ -248,6 +300,9 @@ public class FriendsControllerTest
         Assert.Equal(expectedResult.Message, actualMessage);
     }
 
+    /// <summary>
+    /// Tests that GetFriends returns OkObjectResult with a list of friends.
+    /// </summary>
     [Fact]
     public async Task GetFriends_ShouldReturnOkWithFriendsList()
     {
@@ -274,6 +329,9 @@ public class FriendsControllerTest
         Assert.Equal(friends[0].Id, actualFriends[0].Id);
     }
 
+    /// <summary>
+    /// Tests that GetFriends returns OkObjectResult with an empty list when there are no friends.
+    /// </summary>
     [Fact]
     public async Task GetFriends_ShouldReturnOkWithEmptyList_WhenNoFriends()
     {
@@ -286,6 +344,9 @@ public class FriendsControllerTest
         Assert.Empty(actualFriends);
     }
 
+    /// <summary>
+    /// Tests that GetPendingIncomingRequests returns OkObjectResult with a list of incoming friend requests.
+    /// </summary>
     [Fact]
     public async Task GetPendingIncomingRequests_ShouldReturnOkWithRequestsList()
     {
@@ -304,6 +365,9 @@ public class FriendsControllerTest
         Assert.Equal(requests[0].Id, actualRequests[0].Id);
     }
 
+    /// <summary>
+    /// Tests that GetPendingIncomingRequests returns OkObjectResult with an empty list when there are no incoming requests.
+    /// </summary>
     [Fact]
     public async Task GetPendingIncomingRequests_ShouldReturnOkWithEmptyList_WhenNoRequests()
     {
@@ -317,6 +381,9 @@ public class FriendsControllerTest
         Assert.Empty(actualRequests);
     }
 
+    /// <summary>
+    /// Tests that GetPendingOutgoingRequests returns OkObjectResult with a list of outgoing friend requests.
+    /// </summary>
     [Fact]
     public async Task GetPendingOutgoingRequests_ShouldReturnOkWithRequestsList()
     {
@@ -335,6 +402,9 @@ public class FriendsControllerTest
         Assert.Equal(requests[0].Id, actualRequests[0].Id);
     }
 
+    /// <summary>
+    /// Tests that GetPendingOutgoingRequests returns OkObjectResult with an empty list when there are no outgoing requests.
+    /// </summary>
     [Fact]
     public async Task GetPendingOutgoingRequests_ShouldReturnOkWithEmptyList_WhenNoRequests()
     {
@@ -348,12 +418,13 @@ public class FriendsControllerTest
         Assert.Empty(actualRequests);
     }
 
+    /// <summary>
+    /// Tests that GetFriendshipStatus returns "Self" status when checking the current user's own ID.
+    /// </summary>
     [Fact]
     public async Task GetFriendshipStatus_ShouldReturnSelfStatus_WhenCheckingOwnId()
     {
-        var otherUserId = _currentUserId;
-
-        var result = await _controller.GetFriendshipStatus(otherUserId);
+        var result = await _controller.GetFriendshipStatus(_currentUserId);
 
         var okResult = Assert.IsType<OkObjectResult>(result);
         Assert.NotNull(okResult.Value);
@@ -364,6 +435,9 @@ public class FriendsControllerTest
             Times.Never);
     }
 
+    /// <summary>
+    /// Tests that GetFriendshipStatus returns "None" status when no friendship exists.
+    /// </summary>
     [Fact]
     public async Task GetFriendshipStatus_ShouldReturnNoneStatus_WhenNoFriendshipExists()
     {
@@ -379,24 +453,34 @@ public class FriendsControllerTest
         Assert.Equal("No friendship record exists.", GetPropertyValue(okResult.Value, "Message"));
     }
 
+    /// <summary>
+    /// Tests that GetFriendshipStatus returns the correct status when a friendship exists.
+    /// </summary>
     [Fact]
     public async Task GetFriendshipStatus_ShouldReturnCorrectStatus_WhenFriendshipExists()
     {
+        // Arrange: Set up a mock friendship status and user ID.
         var otherUserId = Guid.NewGuid();
         _friendshipServiceMock.Setup(s => s.GetFriendshipStatusAsync(_currentUserId, otherUserId))
             .ReturnsAsync(FriendshipStatus.Accepted);
 
+        // Act: Call the GetFriendshipStatus method on the controller.
         var result = await _controller.GetFriendshipStatus(otherUserId);
 
+        // Assert: Verify the result is of type OkObjectResult and contains the expected status.
         var okResult = Assert.IsType<OkObjectResult>(result);
         Assert.NotNull(okResult.Value);
         Assert.Equal("Accepted", GetPropertyValue(okResult.Value, "Status"));
         Assert.Equal(FriendshipStatus.Accepted, GetPropertyValue(okResult.Value, "RawStatus"));
     }
 
+    /// <summary>
+    /// Tests that all controller methods throw an InvalidOperationException when the User ID claim is invalid.
+    /// </summary>
     [Fact]
     public async Task ControllerMethods_ShouldThrowInvalidOperationException_WhenUserIdClaimIsInvalid()
     {
+        // Arrange: Create a controller instance with an invalid User ID claim.
         var controllerWithInvalidClaim = new FriendsController(_friendshipServiceMock.Object, _loggerMock.Object)
         {
             ControllerContext = new ControllerContext
@@ -410,6 +494,7 @@ public class FriendsControllerTest
             }
         };
 
+        // Act & Assert: Verify that each controller method throws an InvalidOperationException.
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             controllerWithInvalidClaim.SendFriendRequest(Guid.NewGuid()));
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
@@ -427,9 +512,13 @@ public class FriendsControllerTest
             controllerWithInvalidClaim.GetFriendshipStatus(Guid.NewGuid()));
     }
 
+    /// <summary>
+    /// Tests that an error is logged when the User ID claim is invalid.
+    /// </summary>
     [Fact]
     public async Task ControllerMethods_ShouldLogError_WhenUserIdClaimIsInvalid()
     {
+        // Arrange: Create a controller instance with an invalid User ID claim.
         var controllerWithInvalidClaim = new FriendsController(_friendshipServiceMock.Object, _loggerMock.Object)
         {
             ControllerContext = new ControllerContext
@@ -443,6 +532,7 @@ public class FriendsControllerTest
             }
         };
 
+        // Act & Assert: Verify that an InvalidOperationException is thrown and an error is logged.
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             controllerWithInvalidClaim.SendFriendRequest(Guid.NewGuid()));
 

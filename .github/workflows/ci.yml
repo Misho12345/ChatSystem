@@ -74,9 +74,9 @@ jobs:
 
       - name: Restore dependencies
         run: dotnet restore ./ChatSystem.sln
-
-      - name: Build solution
-        run: dotnet build ./ChatSystem.sln --no-restore --configuration Release
+        
+      - name: Build solution (skip docs)
+        run: dotnet build ./ChatSystem.sln --no-restore --configuration Release /p:GenerateDocumentationFile=false
 
       - name: Wait for databases to be healthy
         run: |
