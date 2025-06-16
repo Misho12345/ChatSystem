@@ -10,6 +10,9 @@ EXPOSE 8081
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
+
+RUN apt-get update && apt-get install -y libssl-dev && rm -rf /var/lib/apt/lists/*
+
 COPY ["ChatService/ChatService.csproj", "ChatService/"]
 RUN dotnet restore "./ChatService/ChatService.csproj"
 COPY . .
