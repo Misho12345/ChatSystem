@@ -14,12 +14,12 @@ COPY ["UserAccountService/UserAccountService.csproj", "UserAccountService/"]
 RUN dotnet restore "./UserAccountService/UserAccountService.csproj"
 COPY . .
 WORKDIR "/src/UserAccountService"
-RUN dotnet build "./UserAccountService.csproj" -c $BUILD_CONFIGURATION -o /app/build /p:VsxmdEnabled=false
+RUN dotnet build "./UserAccountService.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 # This stage is used to publish the service project to be copied to the final stage
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./UserAccountService.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false /p:VsxmdEnabled=false
+RUN dotnet publish "./UserAccountService.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 # This stage is used in production or when running from VS in regular mode (Default when not using the Debug configuration)
 FROM base AS final
