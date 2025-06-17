@@ -1,4 +1,6 @@
-﻿/**
+﻿let currentConversationId = null;
+
+/**
  * Initializes the application once the DOM content is fully loaded.
  * Sets up authentication, UI elements, and event listeners for user interactions.
  */
