@@ -73,13 +73,13 @@ graph TD
         Nginx[NGINX Reverse Proxy]
 
         subgraph "User & Auth"
-            UAS[UserAccountService<br/>(ASP.NET Core)]
-            Postgres[(PostgreSQL DB<br/>Users, Friends)]
+            UAS[UserAccountService\n(ASP.NET Core)]
+            Postgres[(PostgreSQL DB\nUsers, Friends)]
         end
 
         subgraph "Chatting"
-            CS[ChatService<br/>(ASP.NET Core)]
-            Mongo[(MongoDB<br/>Conversations, Messages)]
+            CS[ChatService\n(ASP.NET Core)]
+            Mongo[(MongoDB\nConversations, Messages)]
         end
 
         UAS -- "Manages Data" --> Postgres
