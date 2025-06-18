@@ -72,26 +72,26 @@ graph TD
     subgraph Server
         Nginx[NGINX Reverse Proxy]
 
-        subgraph "User & Auth"
-            UAS[UserAccountService\n(ASP.NET Core)]
-            Postgres[(PostgreSQL DB\nUsers, Friends)]
+        subgraph User_And_Auth
+            UAS[UserAccountService - ASP.NET Core]
+            Postgres[PostgreSQL DB - Users and Friends]
         end
 
-        subgraph "Chatting"
-            CS[ChatService\n(ASP.NET Core)]
-            Mongo[(MongoDB\nConversations, Messages)]
+        subgraph Chatting
+            CS[ChatService - ASP.NET Core]
+            Mongo[MongoDB - Conversations and Messages]
         end
 
-        UAS -- "Manages Data" --> Postgres
-        CS -- "Manages Data" --> Mongo
-        Nginx -- "/api/useraccount" --> UAS
-        Nginx -- "/api/chat" --> CS
-        UAS -- "API Call to get user info" --> CS
+        UAS -->|Manages Data| Postgres
+        CS -->|Manages Data| Mongo
+        Nginx -->|/api/useraccount| UAS
+        Nginx -->|/api/chat| CS
+        UAS -->|API Call to get user info| CS
     end
 
-    Frontend -- "HTTP/HTTPS Requests" --> Nginx
-    Frontend -- "WebSocket (SignalR)" --> UAS
-    Frontend -- "WebSocket (SignalR)" --> CS
+    Frontend -->|HTTP/HTTPS Requests| Nginx
+    Frontend -->|WebSocket SignalR| UAS
+    Frontend -->|WebSocket SignalR| CS
 ```
 
 ### 4.3. Database Design
