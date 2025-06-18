@@ -86,9 +86,8 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowFrontend",
         policyBuilder =>
         {
-            policyBuilder.WithOrigins(
-                    "http://localhost:3000",
-                    "https://localhost:3000")
+            // For development, allow any origin. For production, you should restrict this to your frontend's domain.
+            policyBuilder.SetIsOriginAllowed(_ => true)
                 .AllowAnyHeader()
                 .AllowAnyMethod()
                 .AllowCredentials();

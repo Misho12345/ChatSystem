@@ -2,7 +2,7 @@
  * Module for managing SignalR connection to the FriendshipHub and handling real-time notifications.
  */
 const NotificationClient = (function () {
-    const FRIENDSHIP_HUB_URL = 'http://localhost:8001/friendshiphub';
+    const FRIENDSHIP_HUB_URL = '/friendshiphub';
     let connection = null;
 
     /**

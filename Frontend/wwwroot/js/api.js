@@ -2,8 +2,8 @@
  * Module for interacting with the API endpoints of the User Account and Chat Service.
  */
 const Api = (function () {
-    const USER_ACCOUNT_BASE_URL = 'http://localhost:8001/api';
-    const CHAT_SERVICE_BASE_URL = 'http://localhost:8002/api';
+    const USER_ACCOUNT_BASE_URL = '/api/useraccount';
+    const CHAT_SERVICE_BASE_URL = '/api/chat';
 
     /**
      * Makes an HTTP request to the specified URL with the given method, body, and authentication requirements.

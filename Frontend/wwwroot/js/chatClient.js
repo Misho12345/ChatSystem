@@ -2,7 +2,7 @@
  * Module for managing SignalR connection to the ChatHub and handling real-time chat functionality.
  */
 const ChatClient = (function () {
-    const CHAT_HUB_URL = 'http://localhost:8002/chathub';
+    const CHAT_HUB_URL = '/chathub';
     let connection = null;
 
     /**
